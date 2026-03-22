@@ -2,9 +2,8 @@
 // CYBERPUNK LEADERBOARD - CONFIG & UTILITIES
 // ============================================
 
-// !! REPLACE THESE WITH YOUR SUPABASE PROJECT VALUES !!
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://jhlzgmpvqxeeikvnqluo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobHpnbXB2cXhlZWlrdm5xbHVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDAwNDIsImV4cCI6MjA4OTc3NjA0Mn0.72BkbrcBQAphO3I4IEtpGBinVgGRXPtVzVUuJWJErYk';
 
 // Initialize Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
