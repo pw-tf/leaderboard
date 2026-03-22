@@ -47,11 +47,11 @@
 
             <!-- TABS -->
             <div class="admin-tabs">
-                <button class="admin-tab active" onclick="switchTab('players')">Players</button>
-                <button class="admin-tab" onclick="switchTab('games')">Games</button>
-                <button class="admin-tab" onclick="switchTab('rounds')">Rounds</button>
-                <button class="admin-tab" onclick="switchTab('solo-match')">Solo Match</button>
-                <button class="admin-tab" onclick="switchTab('team-match')">Team Match</button>
+                <button class="admin-tab active" onclick="switchTab(this, 'players')">Players</button>
+                <button class="admin-tab" onclick="switchTab(this, 'games')">Games</button>
+                <button class="admin-tab" onclick="switchTab(this, 'rounds')">Rounds</button>
+                <button class="admin-tab" onclick="switchTab(this, 'solo-match')">Solo Match</button>
+                <button class="admin-tab" onclick="switchTab(this, 'team-match')">Team Match</button>
             </div>
 
             <!-- TAB: PLAYERS -->
@@ -233,10 +233,10 @@
     // ============================================
     // TAB SWITCHING
     // ============================================
-    function switchTab(name) {
+    function switchTab(btn, name) {
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
+        btn.classList.add('active');
         document.getElementById(`tab-${name}`).classList.add('active');
 
         // Refresh dropdowns when switching to match tabs
@@ -271,8 +271,8 @@
         container.innerHTML = players.map(p => `
             <div class="admin-list-item">
                 <div class="admin-list-info">
-                    <div class="admin-list-title">${p.gamertag}</div>
-                    <div class="admin-list-meta">${p.real_name}</div>
+                    <div class="admin-list-title">${escapeHtml(p.gamertag)}</div>
+                    <div class="admin-list-meta">${escapeHtml(p.real_name)}</div>
                 </div>
                 <button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')">Delete</button>
             </div>
@@ -335,8 +335,8 @@
             return `
                 <div class="admin-list-item">
                     <div class="admin-list-info">
-                        <div class="admin-list-title">${g.name}</div>
-                        <div class="admin-list-meta">${meta}</div>
+                        <div class="admin-list-title">${escapeHtml(g.name)}</div>
+                        <div class="admin-list-meta">${escapeHtml(meta)}</div>
                     </div>
                     <button class="btn btn-danger btn-sm" onclick="deleteGame('${g.id}')">Delete</button>
                 </div>
@@ -401,7 +401,7 @@
         container.innerHTML = rounds.map(r => `
             <div class="admin-list-item">
                 <div class="admin-list-info">
-                    <div class="admin-list-title">${r.name}</div>
+                    <div class="admin-list-title">${escapeHtml(r.name)}</div>
                     <div class="admin-list-meta">Order: ${r.sort_order}</div>
                 </div>
                 <button class="btn btn-danger btn-sm" onclick="deleteRound('${r.id}')">Delete</button>
@@ -445,9 +445,9 @@
         const roundSelect = document.getElementById('solo-round');
         const gameSelect = document.getElementById('solo-game');
 
-        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
         const soloGames = games.filter(g => g.type === 'solo');
-        gameSelect.innerHTML = soloGames.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        gameSelect.innerHTML = soloGames.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
 
         // Show placement entry
         gameSelect.onchange = renderSoloPlacementArea;
@@ -474,7 +474,7 @@
                     <span class="rank ${i<=3 ? 'rank-'+i : ''}" style="min-width:40px;">#${i}</span>
                     <select class="form-select solo-placement-select" data-placement="${i}">
                         <option value="">-- Select Player --</option>
-                        ${players.map(p => `<option value="${p.id}">${p.gamertag}</option>`).join('')}
+                        ${players.map(p => `<option value="${p.id}">${escapeHtml(p.gamertag)}</option>`).join('')}
                     </select>
                     <span class="points" style="font-size:0.85rem; min-width:50px;">${pts}pts</span>
                 </div>
@@ -524,7 +524,7 @@
             if (resErr) throw resErr;
 
             showToast('Solo match recorded!');
-            renderSoloPlacementArea();
+            populateSoloMatchForm();
         } catch (err) {
             showToast(err.message, 'error');
         }
@@ -537,9 +537,9 @@
         const roundSelect = document.getElementById('team-round');
         const gameSelect = document.getElementById('team-game');
 
-        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
         const teamGames = games.filter(g => g.type === 'team');
-        gameSelect.innerHTML = teamGames.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        gameSelect.innerHTML = teamGames.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
 
         // Pre-fill win/lose from game config
         gameSelect.onchange = () => {
@@ -564,7 +564,7 @@
 
         container.innerHTML = players.map(p => `
             <div class="player-chip" data-id="${p.id}" onclick="cycleTeamAssignment('${p.id}')">
-                ${p.gamertag}
+                ${escapeHtml(p.gamertag)}
             </div>
         `).join('');
     }
@@ -593,13 +593,13 @@
                 <div style="flex:1; min-width:120px;">
                     <div class="form-label" style="color:var(--neon-cyan);">Alpha (${alphaPlayers.length})</div>
                     <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary);">
-                        ${alphaPlayers.map(p => p.gamertag).join(', ') || 'None'}
+                        ${alphaPlayers.map(p => escapeHtml(p.gamertag)).join(', ') || 'None'}
                     </div>
                 </div>
                 <div style="flex:1; min-width:120px;">
                     <div class="form-label" style="color:var(--neon-magenta);">Bravo (${bravoPlayers.length})</div>
                     <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary);">
-                        ${bravoPlayers.map(p => p.gamertag).join(', ') || 'None'}
+                        ${bravoPlayers.map(p => escapeHtml(p.gamertag)).join(', ') || 'None'}
                     </div>
                 </div>
             </div>
@@ -665,8 +665,7 @@
             if (ptsErr) throw ptsErr;
 
             showToast('Team match recorded!');
-            renderTeamPlayerChips();
-            updateTeamSummary();
+            populateTeamMatchForm();
         } catch (err) {
             showToast(err.message, 'error');
         }

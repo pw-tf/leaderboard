@@ -55,7 +55,7 @@
                 let html = '';
                 allGames.forEach(g => {
                     const typeTag = g.type === 'team' ? ' [TEAM]' : ' [SOLO]';
-                    html += `<button class="game-filter-btn" data-id="${g.id}" onclick="selectGame('${g.id}')">${g.name}${typeTag}</button>`;
+                    html += `<button class="game-filter-btn" data-id="${g.id}" onclick="selectGame('${g.id}')">${escapeHtml(g.name)}${typeTag}</button>`;
                 });
                 filterContainer.innerHTML = html;
 
@@ -88,12 +88,12 @@
                 .sort((a, b) => b.game_points - a.game_points);
 
             if (standings.length === 0) {
-                container.innerHTML = `<div class="empty-state">No results for ${game.name} yet.</div>`;
+                container.innerHTML = `<div class="empty-state">No results for ${escapeHtml(game.name)} yet.</div>`;
                 return;
             }
 
             let html = `
-                <div class="panel-title">${game.name} — ${game.type.toUpperCase()}</div>
+                <div class="panel-title">${escapeHtml(game.name)} — ${game.type.toUpperCase()}</div>
                 <table class="leaderboard">
                     <thead>
                         <tr>

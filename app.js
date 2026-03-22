@@ -9,9 +9,22 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================
+// HTML ESCAPING (XSS prevention)
+// ============================================
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ============================================
 // TEAM LABELS
 // ============================================
-const TEAM_LABELS = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
+const TEAM_LABELS = ['Alpha', 'Bravo'];
 
 // ============================================
 // TOAST NOTIFICATIONS
@@ -115,7 +128,8 @@ async function fetchMatches() {
 async function fetchPlayerStandings() {
     const { data, error } = await supabase
         .from('player_standings')
-        .select('*');
+        .select('*')
+        .order('total_points', { ascending: false });
     if (error) throw error;
     return data;
 }
@@ -141,7 +155,7 @@ function renderRank(index) {
 }
 
 function renderGamertag(gamertag, realName) {
-    return `<span class="gamertag" onclick="this.classList.toggle('show-name')">${gamertag}<span class="real-name">${realName}</span></span>`;
+    return `<span class="gamertag" onclick="this.classList.toggle('show-name')">${escapeHtml(gamertag)}<span class="real-name">${escapeHtml(realName)}</span></span>`;
 }
 
 function renderPoints(pts) {
