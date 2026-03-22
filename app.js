@@ -6,7 +6,7 @@ const SUPABASE_URL = 'https://jhlzgmpvqxeeikvnqluo.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobHpnbXB2cXhlZWlrdm5xbHVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDAwNDIsImV4cCI6MjA4OTc3NjA0Mn0.72BkbrcBQAphO3I4IEtpGBinVgGRXPtVzVUuJWJErYk';
 
 // Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================
 // HTML ESCAPING (XSS prevention)
@@ -47,7 +47,7 @@ function showToast(message, type = 'success') {
 // AUTH HELPERS
 // ============================================
 async function getSession() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabaseClientClient.auth.getSession();
     return session;
 }
 
@@ -57,13 +57,13 @@ async function isAdmin() {
 }
 
 async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClientClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
 }
 
 async function signOut() {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabaseClientClient.auth.signOut();
     if (error) throw error;
 }
 
@@ -71,7 +71,7 @@ async function signOut() {
 // DATA FETCHERS
 // ============================================
 async function fetchPlayers() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('players')
         .select('*')
         .order('gamertag');
@@ -80,7 +80,7 @@ async function fetchPlayers() {
 }
 
 async function fetchGames() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('games')
         .select('*')
         .order('name');
@@ -89,7 +89,7 @@ async function fetchGames() {
 }
 
 async function fetchRounds() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('rounds')
         .select('*')
         .order('sort_order');
@@ -98,7 +98,7 @@ async function fetchRounds() {
 }
 
 async function fetchMatches() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('matches')
         .select(`
             *,
@@ -126,7 +126,7 @@ async function fetchMatches() {
 }
 
 async function fetchPlayerStandings() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('player_standings')
         .select('*')
         .order('total_points', { ascending: false });
@@ -135,7 +135,7 @@ async function fetchPlayerStandings() {
 }
 
 async function fetchGamePlayerStandings() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from('game_player_standings')
         .select('*');
     if (error) throw error;
