@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS ARENA // Schedule</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 class="site-title">Nexus Arena</h1>
+            <p class="site-subtitle">// Game Competition Leaderboard //</p>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-link">Standings</a>
+                <a href="games.html" class="nav-link">Games</a>
+                <a href="schedule.html" class="nav-link">Schedule</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </header>
+
+        <main>
+            <h2 class="section-header">Match <span class="accent">Schedule</span></h2>
+            <div id="schedule-content" class="loading">Loading schedule</div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script>
+        async function loadSchedule() {
+            const container = document.getElementById('schedule-content');
+            try {
+                const [rounds, matches] = await Promise.all([fetchRounds(), fetchMatches()]);
+
+                if (rounds.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No rounds scheduled yet.</div>';
+                    return;
+                }
+
+                let html = '';
+                rounds.forEach(round => {
+                    const roundMatches = matches.filter(m => m.round_id === round.id);
+                    html += `<div class="round-header">${round.name}</div>`;
+
+                    if (roundMatches.length === 0) {
+                        html += '<div class="empty-state" style="padding:var(--space-md)">No matches in this round yet.</div>';
+                        return;
+                    }
+
+                    roundMatches.forEach(match => {
+                        html += renderScheduleMatch(match);
+                    });
+                });
+
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = '<div class="empty-state">Error loading schedule.</div>';
+                console.error(err);
+            }
+        }
+
+        function renderScheduleMatch(match) {
+            const gameName = match.game ? match.game.name : 'Unknown';
+            const gameType = match.game ? match.game.type : 'solo';
+            const statusClass = match.status;
+
+            let html = `
+                <div class="match-card ${statusClass}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div class="match-game-name">${gameName}</div>
+                        ${renderMatchStatus(match.status)}
+                    </div>
+            `;
+
+            if (match.status === 'completed') {
+                if (gameType === 'team' && match.match_teams && match.match_teams.length > 0) {
+                    html += '<div class="team-vs">';
+                    match.match_teams.forEach((team, idx) => {
+                        const winnerClass = team.is_winner ? 'winner' : '';
+                        const players = (team.match_team_players || []).map(tp =>
+                            tp.player ? tp.player.gamertag : '?'
+                        ).join('<br>');
+                        const pts = (team.match_team_results || []);
+                        const ptsVal = pts.length > 0 ? pts[0].points_awarded : 0;
+
+                        html += `
+                            <div class="team-block ${winnerClass}">
+                                <div class="team-label">${team.team_label}${team.is_winner ? ' ★' : ''}</div>
+                                <div class="team-players">${players}</div>
+                                <div style="margin-top:8px;"><span class="points" style="font-size:0.85rem">${ptsVal}pts ea</span></div>
+                            </div>
+                        `;
+                        if (idx < match.match_teams.length - 1) {
+                            html += '<div class="vs-divider">VS</div>';
+                        }
+                    });
+                    html += '</div>';
+                } else if (match.match_solo_results && match.match_solo_results.length > 0) {
+                    const sorted = [...match.match_solo_results].sort((a, b) => a.placement - b.placement);
+                    html += '<ul class="placement-list">';
+                    sorted.forEach(r => {
+                        const gt = r.player ? r.player.gamertag : '?';
+                        html += `
+                            <li class="placement-item">
+                                <span>${renderRank(r.placement - 1)} ${gt}</span>
+                                ${renderPoints(r.points_awarded)}
+                            </li>
+                        `;
+                    });
+                    html += '</ul>';
+                }
+            } else {
+                // Pending match - show teams if assigned
+                if (gameType === 'team' && match.match_teams && match.match_teams.length > 0) {
+                    html += '<div class="team-vs">';
+                    match.match_teams.forEach((team, idx) => {
+                        const players = (team.match_team_players || []).map(tp =>
+                            tp.player ? tp.player.gamertag : '?'
+                        ).join('<br>');
+                        html += `
+                            <div class="team-block">
+                                <div class="team-label">${team.team_label}</div>
+                                <div class="team-players">${players || 'TBD'}</div>
+                            </div>
+                        `;
+                        if (idx < match.match_teams.length - 1) {
+                            html += '<div class="vs-divider">VS</div>';
+                        }
+                    });
+                    html += '</div>';
+                } else {
+                    html += '<div class="empty-state" style="padding:var(--space-sm)">Awaiting results</div>';
+                }
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        loadSchedule();
+    </script>
+</body>
+</html>

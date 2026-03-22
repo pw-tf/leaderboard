@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS ARENA // Leaderboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 class="site-title">Nexus Arena</h1>
+            <p class="site-subtitle">// Game Competition Leaderboard //</p>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-link">Standings</a>
+                <a href="games.html" class="nav-link">Games</a>
+                <a href="schedule.html" class="nav-link">Schedule</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Overall Standings -->
+            <h2 class="section-header">Overall <span class="accent">Standings</span></h2>
+            <div class="panel">
+                <div id="standings-table" class="loading">Loading standings</div>
+            </div>
+
+            <!-- Recent Results -->
+            <h2 class="section-header">Recent <span class="accent">Results</span></h2>
+            <div id="recent-results" class="loading">Loading results</div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script>
+        async function loadStandings() {
+            const container = document.getElementById('standings-table');
+            try {
+                const standings = await fetchPlayerStandings();
+                if (!standings || standings.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No scores recorded yet.</div>';
+                    return;
+                }
+                let html = `
+                    <table class="leaderboard">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Solo</th>
+                                <th>Team</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                standings.forEach((p, i) => {
+                    html += `
+                        <tr>
+                            <td>${renderRank(i)}</td>
+                            <td>${renderGamertag(p.gamertag, p.real_name)}</td>
+                            <td><span class="points" style="font-size:0.9rem">${p.solo_points}</span></td>
+                            <td><span class="points" style="font-size:0.9rem">${p.team_points}</span></td>
+                            <td>${renderPoints(p.total_points)}</td>
+                        </tr>
+                    `;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state">Error loading standings.</div>`;
+                console.error(err);
+            }
+        }
+
+        async function loadRecentResults() {
+            const container = document.getElementById('recent-results');
+            try {
+                const matches = await fetchMatches();
+                const completed = matches.filter(m => m.status === 'completed');
+                if (completed.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No completed matches yet.</div>';
+                    return;
+                }
+                let html = '';
+                // Show most recent 10
+                completed.slice(0, 10).forEach(match => {
+                    html += renderMatchCard(match);
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state">Error loading results.</div>`;
+                console.error(err);
+            }
+        }
+
+        function renderMatchCard(match) {
+            const gameName = match.game ? match.game.name : 'Unknown';
+            const gameType = match.game ? match.game.type : 'solo';
+            const roundName = match.round ? match.round.name : '';
+            let html = `
+                <div class="match-card completed">
+                    <div class="match-game-name">${gameName}</div>
+                    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:var(--space-sm);">${roundName}</div>
+            `;
+
+            if (gameType === 'team' && match.match_teams && match.match_teams.length > 0) {
+                html += '<div class="team-vs">';
+                match.match_teams.forEach((team, idx) => {
+                    const winnerClass = team.is_winner ? 'winner' : '';
+                    const players = (team.match_team_players || []).map(tp =>
+                        tp.player ? tp.player.gamertag : '?'
+                    ).join('<br>');
+                    const pts = (team.match_team_results || []);
+                    const ptsVal = pts.length > 0 ? pts[0].points_awarded : 0;
+
+                    html += `
+                        <div class="team-block ${winnerClass}">
+                            <div class="team-label">${team.team_label}${team.is_winner ? ' ★' : ''}</div>
+                            <div class="team-players">${players}</div>
+                            <div style="margin-top:8px;">${renderPoints(ptsVal + 'pts ea')}</div>
+                        </div>
+                    `;
+                    if (idx < match.match_teams.length - 1) {
+                        html += '<div class="vs-divider">VS</div>';
+                    }
+                });
+                html += '</div>';
+            } else if (match.match_solo_results && match.match_solo_results.length > 0) {
+                const sorted = [...match.match_solo_results].sort((a, b) => a.placement - b.placement);
+                html += '<ul class="placement-list">';
+                sorted.forEach(r => {
+                    const gt = r.player ? r.player.gamertag : '?';
+                    html += `
+                        <li class="placement-item">
+                            <span>${renderRank(r.placement - 1)} ${gt}</span>
+                            ${renderPoints(r.points_awarded)}
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // Init
+        loadStandings();
+        loadRecentResults();
+    </script>
+</body>
+</html>

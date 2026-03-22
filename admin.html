@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS ARENA // Admin</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 class="site-title">Nexus Arena</h1>
+            <p class="site-subtitle">// Admin Terminal //</p>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-link">Standings</a>
+                <a href="games.html" class="nav-link">Games</a>
+                <a href="schedule.html" class="nav-link">Schedule</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </header>
+
+        <!-- LOGIN -->
+        <div id="login-section" class="admin-login">
+            <div class="panel">
+                <div class="panel-title">Admin Access</div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="login-email" class="form-input" placeholder="admin@example.com">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="login-password" class="form-input" placeholder="••••••••"
+                        onkeydown="if(event.key==='Enter') handleLogin()">
+                </div>
+                <button class="btn btn-primary" style="width:100%; margin-top:var(--space-sm);" onclick="handleLogin()">
+                    Initialize Connection
+                </button>
+            </div>
+        </div>
+
+        <!-- ADMIN PANEL (hidden until login) -->
+        <div id="admin-panel" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+                <h2 class="section-header" style="margin-bottom:0; border:none; padding:0;">Admin <span class="accent">Panel</span></h2>
+                <button class="btn btn-danger btn-sm" onclick="handleLogout()">Logout</button>
+            </div>
+
+            <!-- TABS -->
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchTab('players')">Players</button>
+                <button class="admin-tab" onclick="switchTab('games')">Games</button>
+                <button class="admin-tab" onclick="switchTab('rounds')">Rounds</button>
+                <button class="admin-tab" onclick="switchTab('solo-match')">Solo Match</button>
+                <button class="admin-tab" onclick="switchTab('team-match')">Team Match</button>
+            </div>
+
+            <!-- TAB: PLAYERS -->
+            <div id="tab-players" class="tab-content active">
+                <div class="panel">
+                    <div class="panel-title">Add Player</div>
+                    <div style="display:flex; gap:var(--space-sm); flex-wrap:wrap;">
+                        <input type="text" id="new-gamertag" class="form-input" placeholder="Gamertag" style="flex:1; min-width:120px;">
+                        <input type="text" id="new-realname" class="form-input" placeholder="Real Name" style="flex:1; min-width:120px;">
+                        <button class="btn btn-primary" onclick="addPlayer()">Add</button>
+                    </div>
+                </div>
+                <div id="players-list"></div>
+            </div>
+
+            <!-- TAB: GAMES -->
+            <div id="tab-games" class="tab-content">
+                <div class="panel">
+                    <div class="panel-title">Add Game</div>
+                    <div class="form-group">
+                        <label class="form-label">Name</label>
+                        <input type="text" id="new-game-name" class="form-input" placeholder="e.g. Mario Kart">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <select id="new-game-type" class="form-select" onchange="toggleGameTypeFields()">
+                            <option value="solo">Solo</option>
+                            <option value="team">Team</option>
+                        </select>
+                    </div>
+                    <!-- Solo fields -->
+                    <div id="solo-points-fields">
+                        <div class="form-group">
+                            <label class="form-label">Placement Points (comma-separated: 1st, 2nd, 3rd...)</label>
+                            <input type="text" id="new-game-placements" class="form-input" placeholder="10, 7, 5, 3, 1">
+                        </div>
+                    </div>
+                    <!-- Team fields -->
+                    <div id="team-points-fields" style="display:none;">
+                        <div style="display:flex; gap:var(--space-sm);">
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Win Points</label>
+                                <input type="number" id="new-game-win" class="form-input" placeholder="5" value="5">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Lose Points</label>
+                                <input type="number" id="new-game-lose" class="form-input" placeholder="2" value="2">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="addGame()">Add Game</button>
+                </div>
+                <div id="games-list"></div>
+            </div>
+
+            <!-- TAB: ROUNDS -->
+            <div id="tab-rounds" class="tab-content">
+                <div class="panel">
+                    <div class="panel-title">Add Round</div>
+                    <div style="display:flex; gap:var(--space-sm); flex-wrap:wrap;">
+                        <input type="text" id="new-round-name" class="form-input" placeholder="e.g. Round 1" style="flex:1; min-width:150px;">
+                        <input type="number" id="new-round-order" class="form-input" placeholder="Order #" style="width:100px;" value="1">
+                        <button class="btn btn-primary" onclick="addRound()">Add</button>
+                    </div>
+                </div>
+                <div id="rounds-list"></div>
+            </div>
+
+            <!-- TAB: SOLO MATCH -->
+            <div id="tab-solo-match" class="tab-content">
+                <div class="panel">
+                    <div class="panel-title">Record Solo Match</div>
+                    <div class="form-group">
+                        <label class="form-label">Round</label>
+                        <select id="solo-round" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Game (Solo only)</label>
+                        <select id="solo-game" class="form-select"></select>
+                    </div>
+                    <div id="solo-placement-area"></div>
+                    <button class="btn btn-success" onclick="submitSoloMatch()" style="margin-top:var(--space-md);">Submit Results</button>
+                </div>
+            </div>
+
+            <!-- TAB: TEAM MATCH -->
+            <div id="tab-team-match" class="tab-content">
+                <div class="panel">
+                    <div class="panel-title">Record Team Match</div>
+                    <div class="form-group">
+                        <label class="form-label">Round</label>
+                        <select id="team-round" class="form-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Game (Team only)</label>
+                        <select id="team-game" class="form-select"></select>
+                    </div>
+
+                    <div id="team-setup-area" style="margin-top:var(--space-lg);">
+                        <div class="form-group">
+                            <label class="form-label">Select Team — Click once for ALPHA (cyan), twice for BRAVO (magenta)</label>
+                        </div>
+                        <div id="team-player-chips" class="player-select-grid"></div>
+
+                        <div id="team-summary" style="margin-top:var(--space-md);"></div>
+
+                        <div class="form-group" style="margin-top:var(--space-md);">
+                            <label class="form-label">Winner</label>
+                            <select id="team-winner" class="form-select">
+                                <option value="Alpha">Alpha</option>
+                                <option value="Bravo">Bravo</option>
+                            </select>
+                        </div>
+
+                        <div style="display:flex; gap:var(--space-sm); margin-top:var(--space-sm);">
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Win Points (per player)</label>
+                                <input type="number" id="team-win-pts" class="form-input" value="5">
+                            </div>
+                            <div class="form-group" style="flex:1;">
+                                <label class="form-label">Lose Points (per player)</label>
+                                <input type="number" id="team-lose-pts" class="form-input" value="2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="submitTeamMatch()" style="margin-top:var(--space-md);">Submit Results</button>
+                </div>
+            </div>
+
+        </div><!-- end admin-panel -->
+    </div>
+
+    <!-- Modal overlay -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal" id="modal-content"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script>
+    // ============================================
+    // STATE
+    // ============================================
+    let players = [];
+    let games = [];
+    let rounds = [];
+    let playerTeamAssignment = {}; // playerId -> null | 'Alpha' | 'Bravo'
+
+    // ============================================
+    // AUTH
+    // ============================================
+    async function checkAuth() {
+        const admin = await isAdmin();
+        document.getElementById('login-section').style.display = admin ? 'none' : 'block';
+        document.getElementById('admin-panel').style.display = admin ? 'block' : 'none';
+        if (admin) loadAllData();
+    }
+
+    async function handleLogin() {
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        if (!email || !password) return showToast('Enter credentials', 'error');
+        try {
+            await signIn(email, password);
+            showToast('Access granted');
+            checkAuth();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    async function handleLogout() {
+        await signOut();
+        showToast('Disconnected');
+        checkAuth();
+    }
+
+    // ============================================
+    // TAB SWITCHING
+    // ============================================
+    function switchTab(name) {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById(`tab-${name}`).classList.add('active');
+
+        // Refresh dropdowns when switching to match tabs
+        if (name === 'solo-match') populateSoloMatchForm();
+        if (name === 'team-match') populateTeamMatchForm();
+    }
+
+    // ============================================
+    // DATA LOADING
+    // ============================================
+    async function loadAllData() {
+        try {
+            [players, games, rounds] = await Promise.all([fetchPlayers(), fetchGames(), fetchRounds()]);
+            renderPlayersList();
+            renderGamesList();
+            renderRoundsList();
+        } catch (err) {
+            console.error(err);
+            showToast('Error loading data', 'error');
+        }
+    }
+
+    // ============================================
+    // PLAYERS CRUD
+    // ============================================
+    function renderPlayersList() {
+        const container = document.getElementById('players-list');
+        if (players.length === 0) {
+            container.innerHTML = '<div class="empty-state">No players yet.</div>';
+            return;
+        }
+        container.innerHTML = players.map(p => `
+            <div class="admin-list-item">
+                <div class="admin-list-info">
+                    <div class="admin-list-title">${p.gamertag}</div>
+                    <div class="admin-list-meta">${p.real_name}</div>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="deletePlayer('${p.id}')">Delete</button>
+            </div>
+        `).join('');
+    }
+
+    async function addPlayer() {
+        const gamertag = document.getElementById('new-gamertag').value.trim();
+        const real_name = document.getElementById('new-realname').value.trim();
+        if (!gamertag || !real_name) return showToast('Fill in both fields', 'error');
+        try {
+            const { error } = await supabase.from('players').insert({ gamertag, real_name });
+            if (error) throw error;
+            document.getElementById('new-gamertag').value = '';
+            document.getElementById('new-realname').value = '';
+            showToast(`${gamertag} added`);
+            players = await fetchPlayers();
+            renderPlayersList();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    async function deletePlayer(id) {
+        if (!confirm('Delete this player?')) return;
+        try {
+            const { error } = await supabase.from('players').delete().eq('id', id);
+            if (error) throw error;
+            showToast('Player removed');
+            players = await fetchPlayers();
+            renderPlayersList();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // ============================================
+    // GAMES CRUD
+    // ============================================
+    function toggleGameTypeFields() {
+        const type = document.getElementById('new-game-type').value;
+        document.getElementById('solo-points-fields').style.display = type === 'solo' ? 'block' : 'none';
+        document.getElementById('team-points-fields').style.display = type === 'team' ? 'block' : 'none';
+    }
+
+    function renderGamesList() {
+        const container = document.getElementById('games-list');
+        if (games.length === 0) {
+            container.innerHTML = '<div class="empty-state">No games yet.</div>';
+            return;
+        }
+        container.innerHTML = games.map(g => {
+            let meta = g.type.toUpperCase();
+            if (g.type === 'solo' && g.placement_points) {
+                const pts = Object.values(g.placement_points).join(', ');
+                meta += ` — Points: ${pts}`;
+            } else if (g.type === 'team') {
+                meta += ` — Win: ${g.win_points}, Lose: ${g.lose_points}`;
+            }
+            return `
+                <div class="admin-list-item">
+                    <div class="admin-list-info">
+                        <div class="admin-list-title">${g.name}</div>
+                        <div class="admin-list-meta">${meta}</div>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="deleteGame('${g.id}')">Delete</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async function addGame() {
+        const name = document.getElementById('new-game-name').value.trim();
+        const type = document.getElementById('new-game-type').value;
+        if (!name) return showToast('Enter a game name', 'error');
+
+        let gameData = { name, type };
+
+        if (type === 'solo') {
+            const raw = document.getElementById('new-game-placements').value.trim();
+            if (!raw) return showToast('Enter placement points', 'error');
+            const points = raw.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v));
+            const placementObj = {};
+            points.forEach((p, i) => placementObj[String(i + 1)] = p);
+            gameData.placement_points = placementObj;
+        } else {
+            gameData.win_points = parseInt(document.getElementById('new-game-win').value) || 0;
+            gameData.lose_points = parseInt(document.getElementById('new-game-lose').value) || 0;
+        }
+
+        try {
+            const { error } = await supabase.from('games').insert(gameData);
+            if (error) throw error;
+            document.getElementById('new-game-name').value = '';
+            document.getElementById('new-game-placements').value = '';
+            showToast(`${name} added`);
+            games = await fetchGames();
+            renderGamesList();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    async function deleteGame(id) {
+        if (!confirm('Delete this game? Associated matches will also be deleted.')) return;
+        try {
+            const { error } = await supabase.from('games').delete().eq('id', id);
+            if (error) throw error;
+            showToast('Game removed');
+            games = await fetchGames();
+            renderGamesList();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // ============================================
+    // ROUNDS CRUD
+    // ============================================
+    function renderRoundsList() {
+        const container = document.getElementById('rounds-list');
+        if (rounds.length === 0) {
+            container.innerHTML = '<div class="empty-state">No rounds yet.</div>';
+            return;
+        }
+        container.innerHTML = rounds.map(r => `
+            <div class="admin-list-item">
+                <div class="admin-list-info">
+                    <div class="admin-list-title">${r.name}</div>
+                    <div class="admin-list-meta">Order: ${r.sort_order}</div>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="deleteRound('${r.id}')">Delete</button>
+            </div>
+        `).join('');
+    }
+
+    async function addRound() {
+        const name = document.getElementById('new-round-name').value.trim();
+        const sort_order = parseInt(document.getElementById('new-round-order').value) || 0;
+        if (!name) return showToast('Enter a round name', 'error');
+        try {
+            const { error } = await supabase.from('rounds').insert({ name, sort_order });
+            if (error) throw error;
+            document.getElementById('new-round-name').value = '';
+            showToast(`${name} added`);
+            rounds = await fetchRounds();
+            renderRoundsList();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    async function deleteRound(id) {
+        if (!confirm('Delete this round and all its matches?')) return;
+        try {
+            const { error } = await supabase.from('rounds').delete().eq('id', id);
+            if (error) throw error;
+            showToast('Round removed');
+            rounds = await fetchRounds();
+            renderRoundsList();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // ============================================
+    // SOLO MATCH
+    // ============================================
+    function populateSoloMatchForm() {
+        const roundSelect = document.getElementById('solo-round');
+        const gameSelect = document.getElementById('solo-game');
+
+        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        const soloGames = games.filter(g => g.type === 'solo');
+        gameSelect.innerHTML = soloGames.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+
+        // Show placement entry
+        gameSelect.onchange = renderSoloPlacementArea;
+        renderSoloPlacementArea();
+    }
+
+    function renderSoloPlacementArea() {
+        const container = document.getElementById('solo-placement-area');
+        const gameId = document.getElementById('solo-game').value;
+        const game = games.find(g => g.id === gameId);
+        if (!game || players.length === 0) {
+            container.innerHTML = '<div class="empty-state">Add players and solo games first.</div>';
+            return;
+        }
+
+        const placements = game.placement_points || {};
+        const maxPlacements = Object.keys(placements).length;
+
+        let html = `<div class="form-label" style="margin-top:var(--space-md);">Assign Placements (${maxPlacements} positions configured)</div>`;
+        for (let i = 1; i <= maxPlacements; i++) {
+            const pts = placements[String(i)] || 0;
+            html += `
+                <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-sm);">
+                    <span class="rank ${i<=3 ? 'rank-'+i : ''}" style="min-width:40px;">#${i}</span>
+                    <select class="form-select solo-placement-select" data-placement="${i}">
+                        <option value="">-- Select Player --</option>
+                        ${players.map(p => `<option value="${p.id}">${p.gamertag}</option>`).join('')}
+                    </select>
+                    <span class="points" style="font-size:0.85rem; min-width:50px;">${pts}pts</span>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
+    }
+
+    async function submitSoloMatch() {
+        const roundId = document.getElementById('solo-round').value;
+        const gameId = document.getElementById('solo-game').value;
+        if (!roundId || !gameId) return showToast('Select round and game', 'error');
+
+        const game = games.find(g => g.id === gameId);
+        const placements = game.placement_points || {};
+        const selects = document.querySelectorAll('.solo-placement-select');
+
+        const results = [];
+        const usedPlayers = new Set();
+        for (const sel of selects) {
+            const playerId = sel.value;
+            const placement = parseInt(sel.dataset.placement);
+            if (!playerId) continue;
+            if (usedPlayers.has(playerId)) return showToast('Duplicate player selected', 'error');
+            usedPlayers.add(playerId);
+            results.push({
+                player_id: playerId,
+                placement,
+                points_awarded: placements[String(placement)] || 0
+            });
+        }
+
+        if (results.length === 0) return showToast('Assign at least one placement', 'error');
+
+        try {
+            // Create match
+            const { data: matchData, error: matchErr } = await supabase
+                .from('matches')
+                .insert({ round_id: roundId, game_id: gameId, status: 'completed' })
+                .select()
+                .single();
+            if (matchErr) throw matchErr;
+
+            // Insert solo results
+            const soloResults = results.map(r => ({ ...r, match_id: matchData.id }));
+            const { error: resErr } = await supabase.from('match_solo_results').insert(soloResults);
+            if (resErr) throw resErr;
+
+            showToast('Solo match recorded!');
+            renderSoloPlacementArea();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // ============================================
+    // TEAM MATCH
+    // ============================================
+    function populateTeamMatchForm() {
+        const roundSelect = document.getElementById('team-round');
+        const gameSelect = document.getElementById('team-game');
+
+        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+        const teamGames = games.filter(g => g.type === 'team');
+        gameSelect.innerHTML = teamGames.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+
+        // Pre-fill win/lose from game config
+        gameSelect.onchange = () => {
+            const game = games.find(g => g.id === gameSelect.value);
+            if (game) {
+                document.getElementById('team-win-pts').value = game.win_points;
+                document.getElementById('team-lose-pts').value = game.lose_points;
+            }
+        };
+
+        // Render player chips
+        renderTeamPlayerChips();
+
+        // Trigger initial config load
+        if (teamGames.length > 0) gameSelect.onchange();
+    }
+
+    function renderTeamPlayerChips() {
+        const container = document.getElementById('team-player-chips');
+        playerTeamAssignment = {};
+        players.forEach(p => playerTeamAssignment[p.id] = null);
+
+        container.innerHTML = players.map(p => `
+            <div class="player-chip" data-id="${p.id}" onclick="cycleTeamAssignment('${p.id}')">
+                ${p.gamertag}
+            </div>
+        `).join('');
+    }
+
+    function cycleTeamAssignment(playerId) {
+        const current = playerTeamAssignment[playerId];
+        if (current === null) playerTeamAssignment[playerId] = 'Alpha';
+        else if (current === 'Alpha') playerTeamAssignment[playerId] = 'Bravo';
+        else playerTeamAssignment[playerId] = null;
+
+        // Update chip visual
+        const chip = document.querySelector(`.player-chip[data-id="${playerId}"]`);
+        chip.classList.remove('selected-alpha', 'selected-bravo');
+        if (playerTeamAssignment[playerId] === 'Alpha') chip.classList.add('selected-alpha');
+        else if (playerTeamAssignment[playerId] === 'Bravo') chip.classList.add('selected-bravo');
+
+        updateTeamSummary();
+    }
+
+    function updateTeamSummary() {
+        const alphaPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Alpha');
+        const bravoPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Bravo');
+
+        document.getElementById('team-summary').innerHTML = `
+            <div style="display:flex; gap:var(--space-md); flex-wrap:wrap;">
+                <div style="flex:1; min-width:120px;">
+                    <div class="form-label" style="color:var(--neon-cyan);">Alpha (${alphaPlayers.length})</div>
+                    <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary);">
+                        ${alphaPlayers.map(p => p.gamertag).join(', ') || 'None'}
+                    </div>
+                </div>
+                <div style="flex:1; min-width:120px;">
+                    <div class="form-label" style="color:var(--neon-magenta);">Bravo (${bravoPlayers.length})</div>
+                    <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary);">
+                        ${bravoPlayers.map(p => p.gamertag).join(', ') || 'None'}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function submitTeamMatch() {
+        const roundId = document.getElementById('team-round').value;
+        const gameId = document.getElementById('team-game').value;
+        const winnerLabel = document.getElementById('team-winner').value;
+        const winPts = parseInt(document.getElementById('team-win-pts').value) || 0;
+        const losePts = parseInt(document.getElementById('team-lose-pts').value) || 0;
+
+        if (!roundId || !gameId) return showToast('Select round and game', 'error');
+
+        const alphaPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Alpha');
+        const bravoPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Bravo');
+
+        if (alphaPlayers.length === 0 || bravoPlayers.length === 0) {
+            return showToast('Both teams need at least one player', 'error');
+        }
+
+        try {
+            // Create match
+            const { data: matchData, error: matchErr } = await supabase
+                .from('matches')
+                .insert({ round_id: roundId, game_id: gameId, status: 'completed' })
+                .select()
+                .single();
+            if (matchErr) throw matchErr;
+
+            // Create teams
+            const teamInserts = [
+                { match_id: matchData.id, team_label: 'Alpha', is_winner: winnerLabel === 'Alpha' },
+                { match_id: matchData.id, team_label: 'Bravo', is_winner: winnerLabel === 'Bravo' }
+            ];
+            const { data: teamsData, error: teamsErr } = await supabase
+                .from('match_teams')
+                .insert(teamInserts)
+                .select();
+            if (teamsErr) throw teamsErr;
+
+            const alphaTeam = teamsData.find(t => t.team_label === 'Alpha');
+            const bravoTeam = teamsData.find(t => t.team_label === 'Bravo');
+
+            // Assign players to teams
+            const playerAssigns = [
+                ...alphaPlayers.map(p => ({ match_team_id: alphaTeam.id, player_id: p.id })),
+                ...bravoPlayers.map(p => ({ match_team_id: bravoTeam.id, player_id: p.id }))
+            ];
+            const { error: assignErr } = await supabase.from('match_team_players').insert(playerAssigns);
+            if (assignErr) throw assignErr;
+
+            // Record points
+            const alphaPts = winnerLabel === 'Alpha' ? winPts : losePts;
+            const bravoPts = winnerLabel === 'Bravo' ? winPts : losePts;
+
+            const pointResults = [
+                ...alphaPlayers.map(p => ({ match_team_id: alphaTeam.id, player_id: p.id, points_awarded: alphaPts })),
+                ...bravoPlayers.map(p => ({ match_team_id: bravoTeam.id, player_id: p.id, points_awarded: bravoPts }))
+            ];
+            const { error: ptsErr } = await supabase.from('match_team_results').insert(pointResults);
+            if (ptsErr) throw ptsErr;
+
+            showToast('Team match recorded!');
+            renderTeamPlayerChips();
+            updateTeamSummary();
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    }
+
+    // ============================================
+    // MODAL
+    // ============================================
+    function openModal(html) {
+        document.getElementById('modal-content').innerHTML = html;
+        document.getElementById('modal-overlay').classList.add('show');
+    }
+
+    function closeModal(e) {
+        if (e.target === document.getElementById('modal-overlay')) {
+            document.getElementById('modal-overlay').classList.remove('show');
+        }
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+    checkAuth();
+    </script>
+</body>
+</html>

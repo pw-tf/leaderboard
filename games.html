@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS ARENA // Games</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 class="site-title">Nexus Arena</h1>
+            <p class="site-subtitle">// Game Competition Leaderboard //</p>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-link">Standings</a>
+                <a href="games.html" class="nav-link">Games</a>
+                <a href="schedule.html" class="nav-link">Schedule</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </header>
+
+        <main>
+            <h2 class="section-header">Game <span class="accent">Leaderboards</span></h2>
+
+            <!-- Game filter buttons -->
+            <div id="game-filters" class="game-filters">
+                <div class="loading">Loading games</div>
+            </div>
+
+            <!-- Leaderboard for selected game -->
+            <div class="panel">
+                <div id="game-leaderboard" class="empty-state">Select a game above</div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script>
+        let allGames = [];
+        let gameStandings = [];
+        let selectedGameId = null;
+
+        async function loadGamesPage() {
+            const filterContainer = document.getElementById('game-filters');
+            try {
+                allGames = await fetchGames();
+                gameStandings = await fetchGamePlayerStandings();
+
+                if (allGames.length === 0) {
+                    filterContainer.innerHTML = '<div class="empty-state">No games added yet.</div>';
+                    return;
+                }
+
+                let html = '';
+                allGames.forEach(g => {
+                    const typeTag = g.type === 'team' ? ' [TEAM]' : ' [SOLO]';
+                    html += `<button class="game-filter-btn" data-id="${g.id}" onclick="selectGame('${g.id}')">${g.name}${typeTag}</button>`;
+                });
+                filterContainer.innerHTML = html;
+
+                // Auto-select first game
+                selectGame(allGames[0].id);
+            } catch (err) {
+                filterContainer.innerHTML = '<div class="empty-state">Error loading games.</div>';
+                console.error(err);
+            }
+        }
+
+        function selectGame(gameId) {
+            selectedGameId = gameId;
+
+            // Update active button
+            document.querySelectorAll('.game-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.id === gameId);
+            });
+
+            renderGameLeaderboard(gameId);
+        }
+
+        function renderGameLeaderboard(gameId) {
+            const container = document.getElementById('game-leaderboard');
+            const game = allGames.find(g => g.id === gameId);
+            if (!game) return;
+
+            const standings = gameStandings
+                .filter(s => s.game_id === gameId)
+                .sort((a, b) => b.game_points - a.game_points);
+
+            if (standings.length === 0) {
+                container.innerHTML = `<div class="empty-state">No results for ${game.name} yet.</div>`;
+                return;
+            }
+
+            let html = `
+                <div class="panel-title">${game.name} — ${game.type.toUpperCase()}</div>
+                <table class="leaderboard">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            standings.forEach((s, i) => {
+                html += `
+                    <tr>
+                        <td>${renderRank(i)}</td>
+                        <td>${renderGamertag(s.gamertag, s.real_name)}</td>
+                        <td>${renderPoints(s.game_points)}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        loadGamesPage();
+    </script>
+</body>
+</html>
