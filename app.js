@@ -2,17 +2,29 @@
 // CYBERPUNK LEADERBOARD - CONFIG & UTILITIES
 // ============================================
 
-// !! REPLACE THESE WITH YOUR SUPABASE PROJECT VALUES !!
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://jhlzgmpvqxeeikvnqluo.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpobHpnbXB2cXhlZWlrdm5xbHVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDAwNDIsImV4cCI6MjA4OTc3NjA0Mn0.72BkbrcBQAphO3I4IEtpGBinVgGRXPtVzVUuJWJErYk';
 
 // Initialize Supabase client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ============================================
+// HTML ESCAPING (XSS prevention)
+// ============================================
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+// ============================================
 // TEAM LABELS
 // ============================================
-const TEAM_LABELS = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel'];
+const TEAM_LABELS = ['Alpha', 'Bravo'];
 
 // ============================================
 // TOAST NOTIFICATIONS
@@ -116,7 +128,8 @@ async function fetchMatches() {
 async function fetchPlayerStandings() {
     const { data, error } = await supabase
         .from('player_standings')
-        .select('*');
+        .select('*')
+        .order('total_points', { ascending: false });
     if (error) throw error;
     return data;
 }
@@ -142,7 +155,7 @@ function renderRank(index) {
 }
 
 function renderGamertag(gamertag, realName) {
-    return `<span class="gamertag" onclick="this.classList.toggle('show-name')">${gamertag}<span class="real-name">${realName}</span></span>`;
+    return `<span class="gamertag" onclick="this.classList.toggle('show-name')">${escapeHtml(gamertag)}<span class="real-name">${escapeHtml(realName)}</span></span>`;
 }
 
 function renderPoints(pts) {

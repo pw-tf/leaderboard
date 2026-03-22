@@ -97,9 +97,9 @@
         }
 
         function renderMatchCard(match) {
-            const gameName = match.game ? match.game.name : 'Unknown';
+            const gameName = escapeHtml(match.game ? match.game.name : 'Unknown');
             const gameType = match.game ? match.game.type : 'solo';
-            const roundName = match.round ? match.round.name : '';
+            const roundName = escapeHtml(match.round ? match.round.name : '');
             let html = `
                 <div class="match-card completed">
                     <div class="match-game-name">${gameName}</div>
@@ -111,14 +111,14 @@
                 match.match_teams.forEach((team, idx) => {
                     const winnerClass = team.is_winner ? 'winner' : '';
                     const players = (team.match_team_players || []).map(tp =>
-                        tp.player ? tp.player.gamertag : '?'
+                        tp.player ? escapeHtml(tp.player.gamertag) : '?'
                     ).join('<br>');
                     const pts = (team.match_team_results || []);
                     const ptsVal = pts.length > 0 ? pts[0].points_awarded : 0;
 
                     html += `
                         <div class="team-block ${winnerClass}">
-                            <div class="team-label">${team.team_label}${team.is_winner ? ' ★' : ''}</div>
+                            <div class="team-label">${escapeHtml(team.team_label)}${team.is_winner ? ' ★' : ''}</div>
                             <div class="team-players">${players}</div>
                             <div style="margin-top:8px;">${renderPoints(ptsVal + 'pts ea')}</div>
                         </div>
@@ -132,7 +132,7 @@
                 const sorted = [...match.match_solo_results].sort((a, b) => a.placement - b.placement);
                 html += '<ul class="placement-list">';
                 sorted.forEach(r => {
-                    const gt = r.player ? r.player.gamertag : '?';
+                    const gt = r.player ? escapeHtml(r.player.gamertag) : '?';
                     html += `
                         <li class="placement-item">
                             <span>${renderRank(r.placement - 1)} ${gt}</span>

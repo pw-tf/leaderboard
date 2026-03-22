@@ -41,7 +41,7 @@
                 let html = '';
                 rounds.forEach(round => {
                     const roundMatches = matches.filter(m => m.round_id === round.id);
-                    html += `<div class="round-header">${round.name}</div>`;
+                    html += `<div class="round-header">${escapeHtml(round.name)}</div>`;
 
                     if (roundMatches.length === 0) {
                         html += '<div class="empty-state" style="padding:var(--space-md)">No matches in this round yet.</div>';
@@ -61,7 +61,7 @@
         }
 
         function renderScheduleMatch(match) {
-            const gameName = match.game ? match.game.name : 'Unknown';
+            const gameName = escapeHtml(match.game ? match.game.name : 'Unknown');
             const gameType = match.game ? match.game.type : 'solo';
             const statusClass = match.status;
 
@@ -79,14 +79,14 @@
                     match.match_teams.forEach((team, idx) => {
                         const winnerClass = team.is_winner ? 'winner' : '';
                         const players = (team.match_team_players || []).map(tp =>
-                            tp.player ? tp.player.gamertag : '?'
+                            tp.player ? escapeHtml(tp.player.gamertag) : '?'
                         ).join('<br>');
                         const pts = (team.match_team_results || []);
                         const ptsVal = pts.length > 0 ? pts[0].points_awarded : 0;
 
                         html += `
                             <div class="team-block ${winnerClass}">
-                                <div class="team-label">${team.team_label}${team.is_winner ? ' ★' : ''}</div>
+                                <div class="team-label">${escapeHtml(team.team_label)}${team.is_winner ? ' ★' : ''}</div>
                                 <div class="team-players">${players}</div>
                                 <div style="margin-top:8px;"><span class="points" style="font-size:0.85rem">${ptsVal}pts ea</span></div>
                             </div>
@@ -100,7 +100,7 @@
                     const sorted = [...match.match_solo_results].sort((a, b) => a.placement - b.placement);
                     html += '<ul class="placement-list">';
                     sorted.forEach(r => {
-                        const gt = r.player ? r.player.gamertag : '?';
+                        const gt = r.player ? escapeHtml(r.player.gamertag) : '?';
                         html += `
                             <li class="placement-item">
                                 <span>${renderRank(r.placement - 1)} ${gt}</span>
@@ -116,11 +116,11 @@
                     html += '<div class="team-vs">';
                     match.match_teams.forEach((team, idx) => {
                         const players = (team.match_team_players || []).map(tp =>
-                            tp.player ? tp.player.gamertag : '?'
+                            tp.player ? escapeHtml(tp.player.gamertag) : '?'
                         ).join('<br>');
                         html += `
                             <div class="team-block">
-                                <div class="team-label">${team.team_label}</div>
+                                <div class="team-label">${escapeHtml(team.team_label)}</div>
                                 <div class="team-players">${players || 'TBD'}</div>
                             </div>
                         `;
