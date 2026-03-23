@@ -82,6 +82,7 @@
             const container = document.getElementById('game-leaderboard');
             const game = allGames.find(g => g.id === gameId);
             if (!game) return;
+            container.classList.remove('empty-state');
 
             const standings = gameStandings
                 .filter(s => s.game_id === gameId)

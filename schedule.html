@@ -32,6 +32,7 @@
             const container = document.getElementById('schedule-content');
             try {
                 const [rounds, matches] = await Promise.all([fetchRounds(), fetchMatches()]);
+                container.classList.remove('loading');
 
                 if (rounds.length === 0) {
                     container.innerHTML = '<div class="empty-state">No rounds scheduled yet.</div>';
@@ -55,6 +56,7 @@
 
                 container.innerHTML = html;
             } catch (err) {
+                container.classList.remove('loading');
                 container.innerHTML = '<div class="empty-state">Error loading schedule.</div>';
                 console.error(err);
             }

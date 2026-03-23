@@ -920,7 +920,7 @@ a:hover {
 
     /* Panel — allow horizontal scroll for table overflow */
     .panel {
-        padding: var(--space-sm) var(--space-xs);
+        padding: var(--space-md) var(--space-sm);
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
@@ -929,25 +929,25 @@ a:hover {
     .leaderboard th,
     .leaderboard td {
         padding: var(--space-xs) var(--space-sm);
-        font-size: 0.75rem;
+        font-size: 0.85rem;
         white-space: nowrap;
     }
 
     .leaderboard th {
-        font-size: 0.55rem;
+        font-size: 0.6rem;
         letter-spacing: 1px;
     }
 
     .leaderboard .rank {
-        font-size: 0.75rem;
+        font-size: 0.85rem;
     }
 
     .leaderboard .gamertag {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
     }
 
     .leaderboard .points {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
     }
 
     /* Match cards */
@@ -1056,6 +1056,11 @@ a:hover {
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    /* Round header — reduce top margin so first round doesn't have huge gap */
+    .round-header:first-child {
+        margin-top: 0;
     }
 
     /* Form labels */

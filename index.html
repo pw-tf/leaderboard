@@ -39,6 +39,7 @@
             const container = document.getElementById('standings-table');
             try {
                 const standings = await fetchPlayerStandings();
+                container.classList.remove('loading');
                 if (!standings || standings.length === 0) {
                     container.innerHTML = '<div class="empty-state">No scores recorded yet.</div>';
                     return;
@@ -70,6 +71,7 @@
                 html += '</tbody></table>';
                 container.innerHTML = html;
             } catch (err) {
+                container.classList.remove('loading');
                 container.innerHTML = `<div class="empty-state">Error loading standings.</div>`;
                 console.error(err);
             }
@@ -79,6 +81,7 @@
             const container = document.getElementById('recent-results');
             try {
                 const matches = await fetchMatches();
+                container.classList.remove('loading');
                 const completed = matches.filter(m => m.status === 'completed');
                 if (completed.length === 0) {
                     container.innerHTML = '<div class="empty-state">No completed matches yet.</div>';
@@ -91,6 +94,7 @@
                 });
                 container.innerHTML = html;
             } catch (err) {
+                container.classList.remove('loading');
                 container.innerHTML = `<div class="empty-state">Error loading results.</div>`;
                 console.error(err);
             }
