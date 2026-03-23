@@ -121,7 +121,16 @@
             if (type === 'ffa') return '<span class="badge badge-ffa">FFA</span>';
             if (type === 'solo_bracket') return '<span class="badge badge-solo">Solo Bracket</span>';
             if (type === 'team_bracket') return '<span class="badge badge-team">Team Bracket</span>';
+            if (type === 'solo_ladder') return '<span class="badge badge-solo">Solo Ladder</span>';
+            if (type === 'team_ladder') return '<span class="badge badge-team">Team Ladder</span>';
             return `<span class="badge">${escapeHtml(type)}</span>`;
+        }
+
+        function getFormatBadge(type) {
+            if (type === 'solo_ladder' || type === 'team_ladder') {
+                return '<span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--neon-purple);border:1px solid var(--neon-purple);border-radius:var(--radius-sm);padding:2px 8px;">Ladder</span>';
+            }
+            return '';
         }
 
         function getStatusBadge(status) {
@@ -148,7 +157,7 @@
 
                 // Fetch participant counts for all rounds
                 const countPromises = rounds.map(async (round) => {
-                    if (round.type === 'team_bracket') {
+                    if (round.type === 'team_bracket' || round.type === 'team_ladder') {
                         const { count } = await supabaseClient
                             .from('round_teams')
                             .select('id', { count: 'exact', head: true })
@@ -177,6 +186,7 @@
                             <div class="round-card-game">${escapeHtml(round.game_name)}</div>
                             <div class="round-card-meta">
                                 ${getTypeBadge(round.type)}
+                                ${getFormatBadge(round.type)}
                                 ${getStatusBadge(round.status)}
                                 ${getScoringBadge(round.scoring_mode)}
                                 ${countStr ? `<span class="round-count">${escapeHtml(countStr)}</span>` : ''}

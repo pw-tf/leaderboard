@@ -627,6 +627,8 @@
                     <option value="ffa" ${type === 'ffa' ? 'selected' : ''}>FFA (Free-For-All)</option>
                     <option value="solo_bracket" ${type === 'solo_bracket' ? 'selected' : ''}>Solo Bracket</option>
                     <option value="team_bracket" ${type === 'team_bracket' ? 'selected' : ''}>Team Bracket</option>
+                    <option value="solo_ladder" ${type === 'solo_ladder' ? 'selected' : ''}>Solo Ladder (Peak)</option>
+                    <option value="team_ladder" ${type === 'team_ladder' ? 'selected' : ''}>Team Ladder (Peak)</option>
                 </select>
             </div>
             <div class="form-group">
@@ -643,7 +645,7 @@
                     <label class="form-label">Scoring Mode</label>
                     <select id="w-scoring-mode" class="form-select" onchange="updateStep1ScoringFields()">
                         <option value="halo" ${scoringMode === 'halo' ? 'selected' : ''}>Halo (Score × KDA / 100)</option>
-                        <option value="peak" ${scoringMode === 'peak' ? 'selected' : ''}>Peak (Time-based, bracket only)</option>
+                        <option value="peak" ${scoringMode === 'peak' ? 'selected' : ''}>Peak (Distance + Time / 100)</option>
                         <option value="simple_score" ${scoringMode === 'simple_score' ? 'selected' : ''}>Simple Score (Placement Ladder)</option>
                     </select>
                 </div>
@@ -657,13 +659,25 @@
                     </div>
                 </div>
 
-                <!-- Peak: time allowed -->
+                <!-- Peak: course config -->
                 <div id="peak-section" style="display:none;">
-                    <div class="form-group">
-                        <label class="form-label">Time Allowed (minutes)</label>
-                        <input type="number" id="w-time-allowed" class="form-input" value="${wizardData.timeAllowedMinutes || 10}" min="1" style="width:120px;">
+                    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:120px;">
+                            <label class="form-label">Course Distance (m)</label>
+                            <input type="number" id="w-course-distance" class="form-input" value="${wizardData.courseDistance || 2546}" min="1">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:120px;">
+                            <label class="form-label">Time Allowed (seconds)</label>
+                            <input type="number" id="w-time-allowed-sec" class="form-input" value="${wizardData.timeAllowedSeconds || 7200}" min="1">
+                        </div>
                     </div>
-                    <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-bottom:var(--space-sm);">Players who fail (DNF) are ranked by distance covered using the placement ladder above.</p>
+                    <div class="form-group">
+                        <label class="form-label" style="display:flex;align-items:center;gap:var(--space-sm);cursor:pointer;">
+                            <input type="checkbox" id="w-speed-multipliers" ${wizardData.speedMultipliersEnabled ? 'checked' : ''} style="accent-color:var(--neon-cyan);width:14px;height:14px;">
+                            Speed Multipliers (under 1hr: 1.50×, 1-2hr: 1.25×, 2hr+: 1.00×)
+                        </label>
+                    </div>
+                    <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);">Finishers rank by CFS (course + time bonus). DNF rank by distance. Finishers always beat DNF.</p>
                 </div>
 
                 <!-- Win multiplier toggle (bracket only, hidden for FFA) -->
@@ -673,7 +687,7 @@
                             <input type="checkbox" id="w-use-win-mult" ${useWinMult ? 'checked' : ''} style="accent-color:var(--neon-cyan);width:14px;height:14px;">
                             Use Win Multiplier (Prelim 1.25× / Semis 1.50× / Final 1.75×)
                         </label>
-                        <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:4px;">On by default for team brackets. Applies to Halo and Peak modes.</p>
+                        <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:4px;">On by default for team brackets. Applies to Halo mode. Not used for Peak (Peak uses speed multipliers instead).</p>
                     </div>
                 </div>
 
@@ -692,27 +706,30 @@
         const typeEl = document.getElementById('w-round-type');
         if (!typeEl) return;
         const type = typeEl.value;
+        const isPeak = type === 'solo_ladder' || type === 'team_ladder';
 
-        const winMultSection = document.getElementById('win-mult-section');
         const scoringModeEl = document.getElementById('w-scoring-mode');
+        const winMultSection = document.getElementById('win-mult-section');
 
-        // FFA can't use Peak mode
-        if (type === 'ffa' && scoringModeEl && scoringModeEl.value === 'peak') {
-            scoringModeEl.value = 'simple_score';
-        }
-        // Hide Peak option for FFA
+        // If Peak type selected, force Peak scoring mode
         if (scoringModeEl) {
+            if (isPeak) {
+                scoringModeEl.value = 'peak';
+                scoringModeEl.disabled = true;
+            } else {
+                // If coming back from peak type, reset if still peak
+                if (scoringModeEl.value === 'peak') scoringModeEl.value = 'simple_score';
+                scoringModeEl.disabled = false;
+            }
+            // Hide peak option for non-ladder types
             Array.from(scoringModeEl.options).forEach(opt => {
-                if (opt.value === 'peak') opt.style.display = type === 'ffa' ? 'none' : '';
+                if (opt.value === 'peak') opt.style.display = isPeak ? '' : 'none';
             });
         }
-        // Win multiplier: visible for brackets only, default on for team
+
+        // Win multiplier: visible for bracket types only
         if (winMultSection) {
-            winMultSection.style.display = type === 'ffa' ? 'none' : 'block';
-        }
-        const winMultCb = document.getElementById('w-use-win-mult');
-        if (winMultCb && wizardData.useWinMultiplier === undefined) {
-            winMultCb.checked = type === 'team_bracket';
+            winMultSection.style.display = (type === 'solo_bracket' || type === 'team_bracket') ? 'block' : 'none';
         }
 
         updateStep1ScoringFields();
@@ -720,18 +737,17 @@
 
     function updateStep1ScoringFields() {
         const scoringEl = document.getElementById('w-scoring-mode');
-        if (!scoringEl) return;
+        const typeEl = document.getElementById('w-round-type');
+        if (!scoringEl || !typeEl) return;
         const mode = scoringEl.value;
+        const type = typeEl.value;
+        const isPeak = type === 'solo_ladder' || type === 'team_ladder';
 
         const ladderSection = document.getElementById('placement-ladder-section');
         const peakSection = document.getElementById('peak-section');
 
-        if (ladderSection) ladderSection.style.display = (mode === 'simple_score' || mode === 'halo') ? 'none' : 'none';
-        // Show placement ladder for simple_score AND FFA; Peak shows it for DNF ranks
-        const typeEl = document.getElementById('w-round-type');
-        const type = typeEl ? typeEl.value : 'ffa';
-        if (ladderSection) ladderSection.style.display = (mode === 'simple_score' || type === 'ffa' || mode === 'peak') ? 'block' : 'none';
-        if (peakSection) peakSection.style.display = mode === 'peak' ? 'block' : 'none';
+        if (ladderSection) ladderSection.style.display = (mode === 'simple_score' || type === 'ffa') ? 'block' : 'none';
+        if (peakSection) peakSection.style.display = isPeak ? 'block' : 'none';
     }
 
     function toggleCollapsible(header) {
@@ -771,9 +787,15 @@
         wizardData.scoringMode = scoringMode;
         wizardData.useWinMultiplier = useWinMultiplier;
         wizardData.placementLadder = ladder;
-        wizardData.timeAllowedMinutes = scoringMode === 'peak'
-            ? (parseInt((document.getElementById('w-time-allowed') || {}).value) || 10)
-            : null;
+        if (scoringMode === 'peak') {
+            wizardData.courseDistance = parseFloat(document.getElementById('w-course-distance')?.value) || 2546;
+            wizardData.timeAllowedSeconds = parseInt(document.getElementById('w-time-allowed-sec')?.value) || 7200;
+            wizardData.speedMultipliersEnabled = document.getElementById('w-speed-multipliers')?.checked || false;
+        } else {
+            wizardData.courseDistance = null;
+            wizardData.timeAllowedSeconds = null;
+            wizardData.speedMultipliersEnabled = false;
+        }
 
         wizardStep = 2;
         renderWizardStep();
@@ -782,7 +804,7 @@
     function renderStep2(modal) {
         const type = wizardData.type;
 
-        if (type === 'ffa' || type === 'solo_bracket') {
+        if (type === 'ffa' || type === 'solo_bracket' || type === 'solo_ladder') {
             // Show player checkboxes
             const selectedIds = new Set(wizardData.selectedPlayerIds || allPlayers.map(p => p.id));
             const checkboxes = allPlayers.map(p => `
@@ -1040,7 +1062,7 @@
     function wizardNext2() {
         const type = wizardData.type;
 
-        if (type === 'ffa' || type === 'solo_bracket') {
+        if (type === 'ffa' || type === 'solo_bracket' || type === 'solo_ladder') {
             const selected = [];
             document.querySelectorAll('.player-checkbox-item input[type="checkbox"]:checked').forEach(cb => {
                 selected.push(cb.value);
@@ -1077,7 +1099,7 @@
         const type = wizardData.type;
         let participantsSummary = '';
 
-        if (type === 'ffa' || type === 'solo_bracket') {
+        if (type === 'ffa' || type === 'solo_bracket' || type === 'solo_ladder') {
             const names = wizardData.selectedPlayerIds.map(id => {
                 const p = allPlayers.find(pl => pl.id === id);
                 return p ? p.gamertag : id;
@@ -1104,7 +1126,7 @@
         let pointsSummary = `
             <div class="review-item"><span class="review-label">Scoring Mode</span><span class="review-value">${modeLabels[wizardData.scoringMode] || wizardData.scoringMode}</span></div>
             ${ladderPts ? `<div class="review-item"><span class="review-label">Placement Pts</span><span class="review-value">${escapeHtml(ladderPts)}</span></div>` : ''}
-            ${wizardData.timeAllowedMinutes ? `<div class="review-item"><span class="review-label">Time Allowed</span><span class="review-value">${wizardData.timeAllowedMinutes} min</span></div>` : ''}
+            ${wizardData.courseDistance ? `<div class="review-item"><span class="review-label">Course</span><span class="review-value">${wizardData.courseDistance}m / ${wizardData.timeAllowedSeconds}s ${wizardData.speedMultipliersEnabled ? '| Speed Mult ON' : ''}</span></div>` : ''}
             ${type !== 'ffa' ? `<div class="review-item"><span class="review-label">Win Multiplier</span><span class="review-value">${wizardData.useWinMultiplier ? 'Yes' : 'No'}</span></div>` : ''}
         `;
 
@@ -1144,12 +1166,12 @@
                 status: 'active',
                 scoring_mode: wizardData.scoringMode || 'simple_score',
                 placement_ladder: wizardData.placementLadder || {},
-                use_win_multiplier: type !== 'ffa' ? (wizardData.useWinMultiplier || false) : false
+                use_win_multiplier: (type === 'solo_bracket' || type === 'team_bracket') ? (wizardData.useWinMultiplier || false) : false
             };
 
-            if (wizardData.timeAllowedMinutes) {
-                roundInsert.time_allowed_minutes = wizardData.timeAllowedMinutes;
-            }
+            if (wizardData.courseDistance) roundInsert.course_distance = wizardData.courseDistance;
+            if (wizardData.timeAllowedSeconds) roundInsert.time_allowed_seconds = wizardData.timeAllowedSeconds;
+            if (wizardData.speedMultipliersEnabled) roundInsert.speed_multipliers_enabled = wizardData.speedMultipliersEnabled;
 
             // Keep legacy FFA points for backward compat
             if (type === 'ffa') {
@@ -1166,64 +1188,58 @@
                 .single();
             if (roundErr) throw roundErr;
 
-            if (type === 'ffa' || type === 'solo_bracket') {
+            if (type === 'ffa' || type === 'solo_bracket' || type === 'solo_ladder') {
                 // Insert round_players
                 const rpInserts = wizardData.selectedPlayerIds.map(pid => ({
-                    round_id: round.id,
-                    player_id: pid
+                    round_id: round.id, player_id: pid
                 }));
                 const { error: rpErr } = await supabaseClient.from('round_players').insert(rpInserts);
                 if (rpErr) throw rpErr;
 
-                // For solo bracket: generate and insert bracket matches
                 if (type === 'solo_bracket') {
-                    // Build participants sorted by points
+                    // existing bracket generation code — unchanged
                     const participants = wizardData.selectedPlayerIds.map(pid => {
                         const ps = playerStandings.find(s => s.id === pid);
                         return { id: pid, total_points: ps ? ps.total_points : 0 };
                     }).sort((a, b) => b.total_points - a.total_points);
-
                     const matchInserts = generateBracketMatches(participants, 'solo_bracket', round.id);
                     const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
                     if (matchErr) throw matchErr;
                     await cascadeByeAdvancement(round.id, 'player');
+                } else if (type === 'solo_ladder') {
+                    // Create empty peak_results rows for each player
+                    const prInserts = wizardData.selectedPlayerIds.map(pid => ({
+                        round_id: round.id, player_id: pid
+                    }));
+                    const { error: prErr } = await supabaseClient.from('peak_results').insert(prInserts);
+                    if (prErr) throw prErr;
                 }
 
             } else {
-                // team_bracket
+                // team_bracket or team_ladder — resolve teams first (existing team logic unchanged)
                 const mode = wizardData.teamMode || 'new';
-                let teamsToUse = []; // array of team DB objects {id, team_label}
+                let teamsToUse = [];
 
                 if (mode === 'existing') {
                     teamsToUse = allTeams.filter(t => wizardData.selectedTeamIds.includes(t.id));
                 } else {
-                    // Create/reuse teams and their players
                     for (const team of generatedTeams) {
-                        // Check if team label already exists
                         let existingTeam = allTeams.find(t => t.team_label === team.label);
                         let teamId;
-
                         if (existingTeam) {
                             teamId = existingTeam.id;
-                            // Clear existing team_players and re-assign
                             await supabaseClient.from('team_players').delete().eq('team_id', teamId);
                         } else {
                             const { data: newTeam, error: teamErr } = await supabaseClient
-                                .from('teams')
-                                .insert({ team_label: team.label })
-                                .select()
-                                .single();
+                                .from('teams').insert({ team_label: team.label }).select().single();
                             if (teamErr) throw teamErr;
                             teamId = newTeam.id;
                         }
-
-                        // Insert team_players
                         const tpInserts = team.players.map(p => ({ team_id: teamId, player_id: p.id }));
                         if (tpInserts.length > 0) {
                             const { error: tpErr } = await supabaseClient.from('team_players').insert(tpInserts);
                             if (tpErr) throw tpErr;
                         }
-
                         teamsToUse.push({ id: teamId, team_label: team.label });
                     }
                 }
@@ -1233,12 +1249,20 @@
                 const { error: rtErr } = await supabaseClient.from('round_teams').insert(rtInserts);
                 if (rtErr) throw rtErr;
 
-                // Generate bracket matches for teams
-                const teamParticipants = teamsToUse.map(t => ({ id: t.id, total_points: 0 }));
-                const matchInserts = generateBracketMatches(teamParticipants, 'team_bracket', round.id);
-                const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
-                if (matchErr) throw matchErr;
-                await cascadeByeAdvancement(round.id, 'team');
+                if (type === 'team_bracket') {
+                    const teamParticipants = teamsToUse.map(t => ({ id: t.id, total_points: 0 }));
+                    const matchInserts = generateBracketMatches(teamParticipants, 'team_bracket', round.id);
+                    const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
+                    if (matchErr) throw matchErr;
+                    await cascadeByeAdvancement(round.id, 'team');
+                } else if (type === 'team_ladder') {
+                    // Create empty peak_results rows for each team
+                    const prInserts = teamsToUse.map(t => ({
+                        round_id: round.id, team_id: t.id
+                    }));
+                    const { error: prErr } = await supabaseClient.from('peak_results').insert(prInserts);
+                    if (prErr) throw prErr;
+                }
             }
 
             showToast(`Round "${wizardData.name}" created!`);
@@ -1269,8 +1293,15 @@
             managedRound = allRounds.find(r => r.id === roundId);
             if (!managedRound) throw new Error('Round not found');
 
+            const isLadder = managedRound.type === 'solo_ladder' || managedRound.type === 'team_ladder';
             if (managedRound.type === 'ffa') {
                 await renderFfaManage(section);
+            } else if (isLadder) {
+                // Load team data for team_ladder so savePeakResults can distribute points
+                if (managedRound.type === 'team_ladder') {
+                    managedRoundTeams = await fetchRoundTeams(managedRound.id);
+                }
+                await renderPeakManage(section);
             } else {
                 await renderBracketManage(section);
             }
@@ -1591,37 +1622,6 @@
                 </div>
                 <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Winner = higher total CFS. Points = CFS ÷ 100${round.use_win_multiplier ? ' × round multiplier' : ''}.</p>
             `;
-        } else if (mode === 'peak') {
-            const timeAllowed = (round.time_allowed_minutes || 10) * 60;
-            statsHtml = `
-                <div style="display:flex;gap:var(--space-lg);flex-wrap:wrap;">
-                    <div style="flex:1;">
-                        <div class="form-label" style="color:var(--neon-cyan);">${escapeHtml(p1Name)}</div>
-                        <label class="form-label" style="margin-top:var(--space-sm);">
-                            <input type="checkbox" id="p1-completed" onchange="togglePeakCompletion('p1')"> Completed
-                        </label>
-                        <div id="p1-time-div" style="display:none;margin-top:var(--space-sm);">
-                            <input type="number" id="p1-time" class="form-input" placeholder="Time taken (seconds)" min="0" max="${timeAllowed}">
-                        </div>
-                        <div id="p1-dist-div" style="margin-top:var(--space-sm);">
-                            <input type="number" id="p1-dist" class="form-input" placeholder="Distance covered" min="0" step="0.01">
-                        </div>
-                    </div>
-                    <div style="flex:1;">
-                        <div class="form-label" style="color:var(--neon-cyan);">${escapeHtml(p2Name)}</div>
-                        <label class="form-label" style="margin-top:var(--space-sm);">
-                            <input type="checkbox" id="p2-completed" onchange="togglePeakCompletion('p2')"> Completed
-                        </label>
-                        <div id="p2-time-div" style="display:none;margin-top:var(--space-sm);">
-                            <input type="number" id="p2-time" class="form-input" placeholder="Time taken (seconds)" min="0" max="${timeAllowed}">
-                        </div>
-                        <div id="p2-dist-div" style="margin-top:var(--space-sm);">
-                            <input type="number" id="p2-dist" class="form-input" placeholder="Distance covered" min="0" step="0.01">
-                        </div>
-                    </div>
-                </div>
-                <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Time allowed: ${round.time_allowed_minutes} min. Winner = faster completion, or further distance if both DNF.</p>
-            `;
         } else {
             // Simple Score: just winner radio + optional display scores
             statsHtml = `
@@ -1750,45 +1750,6 @@
                 score2 = p2Cfs.toFixed(2);
                 statsToInsert = [...p1Stats, ...p2Stats];
 
-            } else if (mode === 'peak') {
-                const p1Complete = document.getElementById('p1-completed').checked;
-                const p2Complete = document.getElementById('p2-completed').checked;
-                const timeAllowedSec = (round.time_allowed_minutes || 10) * 60;
-
-                let p1Points = 0, p2Points = 0;
-                let p1TimeSec = null, p2TimeSec = null;
-                let p1Dist = null, p2Dist = null;
-
-                if (p1Complete) {
-                    p1TimeSec = parseInt(document.getElementById('p1-time').value) || 0;
-                    const { points } = calculatePeakCompletion(timeAllowedSec, p1TimeSec, mult);
-                    p1Points = points;
-                } else {
-                    p1Dist = parseFloat(document.getElementById('p1-dist').value) || 0;
-                }
-                if (p2Complete) {
-                    p2TimeSec = parseInt(document.getElementById('p2-time').value) || 0;
-                    const { points } = calculatePeakCompletion(timeAllowedSec, p2TimeSec, mult);
-                    p2Points = points;
-                } else {
-                    p2Dist = parseFloat(document.getElementById('p2-dist').value) || 0;
-                }
-
-                // Determine winner: completion beats DNF; faster time wins; further distance wins
-                if (p1Complete && !p2Complete) winnerId = p1Id;
-                else if (p2Complete && !p1Complete) winnerId = p2Id;
-                else if (p1Complete && p2Complete) winnerId = p1TimeSec <= p2TimeSec ? p1Id : p2Id;
-                else winnerId = (p1Dist || 0) >= (p2Dist || 0) ? p1Id : p2Id;
-
-                score1 = p1Complete ? `${p1TimeSec}s` : `${p1Dist}m`;
-                score2 = p2Complete ? `${p2TimeSec}s` : `${p2Dist}m`;
-
-                // Award per-player stats (use team player IDs if available)
-                const allP1 = p1PlayerIds.length > 0 ? p1PlayerIds : [p1Id];
-                const allP2 = p2PlayerIds.length > 0 ? p2PlayerIds : [p2Id];
-                // For Peak, only award computed points; stat columns: time or distance
-                // We'll store stats separately after match update
-
             } else {
                 // Simple Score: optional display scores, points awarded at completeRound()
                 score1 = document.getElementById('score-1')?.value?.trim() || null;
@@ -1820,31 +1781,7 @@
                 if (ppErr) throw ppErr;
             }
 
-            // 3. For Peak: award points to winner's players
-            if (mode === 'peak') {
-                const winnerPIds = winnerId === p1Id
-                    ? (p1PlayerIds.length > 0 ? p1PlayerIds : [p1Id])
-                    : (p2PlayerIds.length > 0 ? p2PlayerIds : [p2Id]);
-                const winnerTime = winnerId === p1Id
-                    ? (document.getElementById('p1-completed').checked ? parseInt(document.getElementById('p1-time').value) || 0 : null)
-                    : (document.getElementById('p2-completed').checked ? parseInt(document.getElementById('p2-time').value) || 0 : null);
-                const timeAllowedSec = (round.time_allowed_minutes || 10) * 60;
-                let peakPts = 0;
-                if (winnerTime !== null) {
-                    const { points } = calculatePeakCompletion(timeAllowedSec, winnerTime, mult);
-                    peakPts = points;
-                }
-                if (peakPts > 0) {
-                    await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'match_peak').in('player_id', winnerPIds);
-                    const ppInserts = winnerPIds.map(pid => ({
-                        round_id: round.id, player_id: pid, points: parseFloat(peakPts.toFixed(4)), source: 'match_peak'
-                    }));
-                    const { error: ppErr } = await supabaseClient.from('player_points').insert(ppInserts);
-                    if (ppErr) throw ppErr;
-                }
-            }
-
-            // 4. Advance winner
+            // 3. Advance winner
             await advanceWinner(match, winnerId, round.type);
 
             closeMatchModal();
@@ -2082,6 +2019,234 @@
             managedRound = allRounds.find(r => r.id === round.id);
             renderRoundsList();
             await renderBracketManage(document.getElementById('manage-round-section'));
+        } catch (err) {
+            showToast(err.message, 'error');
+            console.error(err);
+        }
+    }
+
+    // ============================================
+    // PEAK LADDER MANAGEMENT
+    // ============================================
+    async function renderPeakManage(section) {
+        const round = managedRound;
+        const isTeam = round.type === 'team_ladder';
+
+        const [roundPlayers, roundTeams, existingResults] = await Promise.all([
+            !isTeam ? fetchRoundPlayers(round.id) : Promise.resolve([]),
+            isTeam ? fetchRoundTeams(round.id) : Promise.resolve([]),
+            fetchPeakResults(round.id)
+        ]);
+
+        const participants = isTeam
+            ? roundTeams.map(rt => rt.team).filter(Boolean)
+            : roundPlayers.map(rp => rp.player).filter(Boolean);
+
+        const existingMap = {};
+        existingResults.forEach(r => {
+            const key = isTeam ? r.team_id : r.player_id;
+            if (key) existingMap[key] = r;
+        });
+
+        const courseDistance = round.course_distance || 0;
+        const timeAllowedSec = round.time_allowed_seconds || 7200;
+        const speedMult = round.speed_multipliers_enabled || false;
+        const isCompleted = round.status === 'completed';
+
+        let rowsHtml = '';
+        participants.forEach(p => {
+            const ex = existingMap[p.id] || {};
+            const isFinished = ex.completed || false;
+            const timeSec = ex.time_taken_seconds || '';
+            const dist = ex.distance_achieved || '';
+            const cfs = ex.cfs || 0;
+            const pts = ex.points_awarded || 0;
+
+            rowsHtml += `
+                <div class="ffa-placement-row" style="flex-wrap:wrap;gap:var(--space-sm);align-items:center;" id="peak-row-${p.id}">
+                    <span class="ffa-placement-name" style="min-width:130px;">${escapeHtml(isTeam ? p.team_label : p.gamertag)}</span>
+                    <label style="display:flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);cursor:pointer;white-space:nowrap;">
+                        <input type="checkbox" id="peak-complete-${p.id}" ${isFinished ? 'checked' : ''} onchange="togglePeakRow('${p.id}')" style="accent-color:var(--neon-green);width:14px;height:14px;"> Finished
+                    </label>
+                    <div id="peak-time-div-${p.id}" style="display:${isFinished ? 'flex' : 'none'};gap:4px;align-items:center;">
+                        <input type="number" id="peak-time-${p.id}" class="form-input" placeholder="Seconds" value="${timeSec}" min="0" max="${timeAllowedSec}" style="width:110px;" oninput="updatePeakLiveCalc('${p.id}')">
+                    </div>
+                    <div id="peak-dist-div-${p.id}" style="display:${isFinished ? 'none' : 'flex'};gap:4px;align-items:center;">
+                        <input type="number" id="peak-dist-${p.id}" class="form-input" placeholder="Distance (m)" value="${dist}" min="0" step="0.01" style="width:130px;" oninput="updatePeakLiveCalc('${p.id}')">
+                    </div>
+                    <span id="peak-calc-${p.id}" style="font-family:var(--font-mono);font-size:0.75rem;color:var(--neon-yellow);min-width:180px;">${cfs ? `CFS: ${parseFloat(cfs).toFixed(2)} → ${parseFloat(pts).toFixed(2)}pts` : ''}</span>
+                </div>
+            `;
+        });
+
+        section.innerHTML = `
+            <div class="manage-section">
+                <div class="manage-section-title">Managing: ${escapeHtml(round.name)}</div>
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-bottom:var(--space-md);">
+                    <span class="badge badge-${round.type === 'team_ladder' ? 'team' : 'solo'}">Peak Ladder</span>
+                    ${getStatusBadge(round.status)}
+                </div>
+                <p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">
+                    Course: ${courseDistance}m &bull; Time: ${timeAllowedSec}s (${Math.floor(timeAllowedSec/3600)}h${Math.floor((timeAllowedSec%3600)/60)}m) &bull; Speed multipliers: ${speedMult ? 'ON' : 'OFF'}
+                    ${speedMult ? '&bull; &lt;1hr: 1.50× / 1-2hr: 1.25× / 2hr+: 1.00×' : ''}
+                </p>
+                <div id="peak-form">
+                    ${rowsHtml || '<div class="empty-state">No participants found.</div>'}
+                </div>
+                ${!isCompleted && participants.length > 0 ? `
+                    <div style="display:flex;gap:var(--space-sm);margin-top:var(--space-lg);flex-wrap:wrap;">
+                        <button class="btn btn-primary" onclick="savePeakResults(false)">Save Results</button>
+                        <button class="btn btn-success" onclick="savePeakResults(true)">Complete Round</button>
+                    </div>
+                ` : ''}
+                ${isCompleted ? '<div style="color:var(--neon-green);font-family:var(--font-mono);font-size:0.85rem;margin-top:var(--space-md);">Round completed.</div>' : ''}
+            </div>
+        `;
+
+        // Store participants for use in save function
+        section._peakParticipants = participants;
+        section._peakIsTeam = isTeam;
+    }
+
+    function togglePeakRow(participantId) {
+        const finished = document.getElementById(`peak-complete-${participantId}`).checked;
+        document.getElementById(`peak-time-div-${participantId}`).style.display = finished ? 'flex' : 'none';
+        document.getElementById(`peak-dist-div-${participantId}`).style.display = finished ? 'none' : 'flex';
+        updatePeakLiveCalc(participantId);
+    }
+
+    function updatePeakLiveCalc(participantId) {
+        const round = managedRound;
+        const courseDistance = round.course_distance || 0;
+        const timeAllowedSec = round.time_allowed_seconds || 7200;
+        const speedMult = round.speed_multipliers_enabled || false;
+        const finished = document.getElementById(`peak-complete-${participantId}`)?.checked || false;
+        const timeSec = parseInt(document.getElementById(`peak-time-${participantId}`)?.value) || 0;
+        const dist = parseFloat(document.getElementById(`peak-dist-${participantId}`)?.value) || 0;
+        const result = calculatePeakResult(finished, timeSec, dist, courseDistance, timeAllowedSec, speedMult);
+        const calcEl = document.getElementById(`peak-calc-${participantId}`);
+        if (calcEl) {
+            const multStr = finished && speedMult && result.speedMultiplier !== 1.0 ? ` ×${result.speedMultiplier}` : '';
+            calcEl.textContent = (finished || dist > 0) ? `CFS: ${result.cfs.toFixed(2)}${multStr} → ${result.points.toFixed(2)}pts` : '';
+        }
+    }
+
+    async function savePeakResults(completeRound) {
+        const section = document.getElementById('manage-round-section');
+        const round = managedRound;
+        const isTeam = round.type === 'team_ladder';
+        const courseDistance = round.course_distance || 0;
+        const timeAllowedSec = round.time_allowed_seconds || 7200;
+        const speedMult = round.speed_multipliers_enabled || false;
+
+        const participants = section._peakParticipants || [];
+        if (participants.length === 0) return showToast('No participants', 'error');
+
+        // Collect entered data
+        const results = [];
+        for (const p of participants) {
+            const finished = document.getElementById(`peak-complete-${p.id}`)?.checked || false;
+            const timeSec = parseInt(document.getElementById(`peak-time-${p.id}`)?.value) || null;
+            const dist = parseFloat(document.getElementById(`peak-dist-${p.id}`)?.value) || null;
+
+            // Skip rows with no data
+            if (!finished && !dist) continue;
+            if (finished && !timeSec) continue;
+
+            const calcResult = calculatePeakResult(finished, timeSec, dist, courseDistance, timeAllowedSec, speedMult);
+
+            const row = {
+                round_id: round.id,
+                completed: finished,
+                time_taken_seconds: finished ? timeSec : null,
+                distance_achieved: !finished ? dist : null,
+                cfs: calcResult.cfs,
+                speed_multiplier: calcResult.speedMultiplier,
+                points_awarded: calcResult.points,
+                ladder_position: null
+            };
+            if (isTeam) row.team_id = p.id;
+            else row.player_id = p.id;
+            results.push({ ...row, _participantId: p.id });
+        }
+
+        if (results.length === 0) return showToast('Enter at least one result', 'error');
+
+        // Compute ladder positions for entries we have
+        rankPeakResults(results);
+
+        try {
+            // Upsert each result
+            for (const r of results) {
+                const upsertData = {
+                    round_id: r.round_id,
+                    completed: r.completed,
+                    time_taken_seconds: r.time_taken_seconds,
+                    distance_achieved: r.distance_achieved,
+                    cfs: r.cfs,
+                    speed_multiplier: r.speed_multiplier,
+                    ladder_position: r.ladder_position,
+                    points_awarded: r.points_awarded
+                };
+                if (isTeam) {
+                    upsertData.team_id = r.team_id;
+                    await supabaseClient.from('peak_results')
+                        .update(upsertData)
+                        .eq('round_id', round.id)
+                        .eq('team_id', r.team_id);
+                } else {
+                    upsertData.player_id = r.player_id;
+                    await supabaseClient.from('peak_results')
+                        .update(upsertData)
+                        .eq('round_id', round.id)
+                        .eq('player_id', r.player_id);
+                }
+            }
+
+            showToast('Results saved!');
+
+            if (completeRound) {
+                // Write player_points for all results
+                await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'peak_result');
+
+                const ppInserts = [];
+                for (const r of results) {
+                    if (isTeam) {
+                        // Distribute points to all players on the team
+                        const teamData = managedRoundTeams.find(rt => rt.team && rt.team.id === r.team_id);
+                        if (teamData?.team?.team_players) {
+                            teamData.team.team_players.forEach(tp => {
+                                ppInserts.push({
+                                    round_id: round.id,
+                                    player_id: tp.player_id,
+                                    points: r.points_awarded,
+                                    source: 'peak_result'
+                                });
+                            });
+                        }
+                    } else {
+                        ppInserts.push({
+                            round_id: round.id,
+                            player_id: r.player_id,
+                            points: r.points_awarded,
+                            source: 'peak_result'
+                        });
+                    }
+                }
+
+                if (ppInserts.length > 0) {
+                    const { error: ppErr } = await supabaseClient.from('player_points').insert(ppInserts);
+                    if (ppErr) throw ppErr;
+                }
+
+                await supabaseClient.from('rounds').update({ status: 'completed' }).eq('id', round.id);
+                showToast('Round completed! Points awarded.');
+                allRounds = await fetchRounds();
+                managedRound = allRounds.find(r => r.id === round.id);
+                renderRoundsList();
+            }
+
+            await renderPeakManage(document.getElementById('manage-round-section'));
         } catch (err) {
             showToast(err.message, 'error');
             console.error(err);

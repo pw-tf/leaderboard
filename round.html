@@ -144,6 +144,8 @@
             if (type === 'ffa') return '<span class="badge badge-ffa">FFA</span>';
             if (type === 'solo_bracket') return '<span class="badge badge-solo">Solo Bracket</span>';
             if (type === 'team_bracket') return '<span class="badge badge-team">Team Bracket</span>';
+            if (type === 'solo_ladder') return '<span class="badge badge-solo">Solo Ladder</span>';
+            if (type === 'team_ladder') return '<span class="badge badge-team">Team Ladder</span>';
             return `<span class="badge">${escapeHtml(type)}</span>`;
         }
 
@@ -352,6 +354,119 @@
             }
         }
 
+        async function renderPeakLadderRound(round) {
+            const content = document.getElementById('round-content');
+            const isTeam = round.type === 'team_ladder';
+            const courseDistance = round.course_distance || 0;
+            const timeAllowedSec = round.time_allowed_seconds || 7200;
+            const speedMult = round.speed_multipliers_enabled || false;
+
+            content.innerHTML = `
+                <div style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);background:var(--bg-panel);border:1px solid var(--border-dim);border-radius:var(--radius-sm);padding:var(--space-md);margin-bottom:var(--space-lg);">
+                    Course: ${courseDistance}m &bull; Time allowed: ${Math.floor(timeAllowedSec/3600)}h${Math.floor((timeAllowedSec%3600)/60)}m &bull;
+                    Speed multipliers: ${speedMult ? '<span style="color:var(--neon-green)">ON</span>' : '<span style="color:var(--text-dim)">OFF</span>'}
+                    ${speedMult ? '(&lt;1hr: 1.50× / 1-2hr: 1.25× / 2hr+: 1.00×)' : ''}
+                    &bull; Formula: ${speedMult ? '(Distance + TimeBonus) × SpeedMultiplier / 100' : '(Distance + TimeBonus) / 100'}
+                </div>
+                <h2 class="section-header">Ladder <span class="accent">Results</span></h2>
+                <div id="peak-ladder-container" class="panel loading">Loading results</div>
+            `;
+
+            const container = document.getElementById('peak-ladder-container');
+            try {
+                const results = await fetchPeakResults(round.id);
+                container.classList.remove('loading');
+
+                if (!results || results.length === 0) {
+                    container.innerHTML = '<div class="empty-state">Results will appear here as participants finish.</div>';
+                    return;
+                }
+
+                // Separate into with-results and pending
+                const withResults = results.filter(r => r.completed || (r.distance_achieved && r.distance_achieved > 0) || r.cfs > 0);
+                const pending = results.filter(r => !r.completed && (!r.distance_achieved || r.distance_achieved <= 0) && (!r.cfs || r.cfs <= 0));
+
+                let html = `<table class="leaderboard">
+                    <thead><tr>
+                        <th>Rank</th>
+                        <th>${isTeam ? 'Team' : 'Player'}</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Time / Distance</th>
+                        ${speedMult ? '<th style="text-align:right;">Mult</th>' : ''}
+                        <th style="text-align:right;">CFS</th>
+                        <th style="text-align:right;">Points</th>
+                    </tr></thead>
+                    <tbody>`;
+
+                withResults.forEach(r => {
+                    const name = isTeam
+                        ? (r.team ? escapeHtml(r.team.team_label) : '?')
+                        : (r.player ? renderGamertag(r.player.gamertag, r.player.real_name) : '?');
+
+                    const statusBadge = r.completed
+                        ? '<span class="badge" style="color:var(--neon-green);border-color:var(--neon-green);background:rgba(57,255,20,0.06);">FINISHED</span>'
+                        : '<span class="badge" style="color:var(--neon-yellow);border-color:var(--neon-yellow);background:rgba(255,225,0,0.06);">DNF</span>';
+
+                    const timeOrDist = r.completed
+                        ? formatSeconds(r.time_taken_seconds)
+                        : `${parseFloat(r.distance_achieved || 0).toFixed(0)}m`;
+
+                    const rankNum = r.ladder_position || '—';
+                    const rankCls = rankNum === 1 ? 'rank-1' : rankNum === 2 ? 'rank-2' : rankNum === 3 ? 'rank-3' : '';
+
+                    html += `<tr>
+                        <td><span class="rank ${rankCls}">#${rankNum}</span></td>
+                        <td>${name}</td>
+                        <td>${statusBadge}</td>
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${escapeHtml(timeOrDist)}</td>
+                        ${speedMult ? `<td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.speed_multiplier != null ? parseFloat(r.speed_multiplier).toFixed(2) + '×' : '—'}</td>` : ''}
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${parseFloat(r.cfs || 0).toFixed(2)}</td>
+                        <td style="text-align:right;">${renderPoints(r.points_awarded)}</td>
+                    </tr>`;
+
+                    // If team, show roster underneath
+                    if (isTeam && r.team && r.team.team_players) {
+                        const roster = r.team.team_players.map(tp => tp.player ? escapeHtml(tp.player.gamertag) : '?').join(', ');
+                        const colspan = speedMult ? 7 : 6;
+                        html += `<tr><td colspan="${colspan}" style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim);padding:2px 8px 8px;">${roster}</td></tr>`;
+                    }
+                });
+
+                // Pending rows (no results yet)
+                if (pending.length > 0) {
+                    pending.forEach(r => {
+                        const name = isTeam
+                            ? (r.team ? escapeHtml(r.team.team_label) : '?')
+                            : (r.player ? renderGamertag(r.player.gamertag, r.player.real_name) : '?');
+                        const colspan = speedMult ? 7 : 6;
+                        html += `<tr>
+                            <td><span class="rank">—</span></td>
+                            <td>${name}</td>
+                            <td><span style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim);">In progress</span></td>
+                            <td colspan="${colspan - 3}" style="color:var(--text-dim);font-family:var(--font-mono);font-size:0.75rem;"></td>
+                        </tr>`;
+                    });
+                }
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (err) {
+                container.classList.remove('loading');
+                container.innerHTML = '<div class="empty-state">Error loading results.</div>';
+                console.error(err);
+            }
+        }
+
+        function formatSeconds(seconds) {
+            if (!seconds) return '—';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) return `${h}h ${m}m ${s}s`;
+            if (m > 0) return `${m}m ${s}s`;
+            return `${s}s`;
+        }
+
         async function init() {
             if (!roundId) {
                 document.getElementById('round-hero').classList.remove('loading');
@@ -364,8 +479,11 @@
                 document.title = `THE CHEESE BOARD // ${round.name}`;
                 renderRoundHero(round);
 
+                const isLadder = round.type === 'solo_ladder' || round.type === 'team_ladder';
                 if (round.type === 'ffa') {
                     await renderFfaRound(round);
+                } else if (isLadder) {
+                    await renderPeakLadderRound(round);
                 } else {
                     await renderBracketRound(round);
                 }

@@ -185,6 +185,16 @@ async function fetchPlayerPoints(roundId) {
     return data;
 }
 
+async function fetchPeakResults(roundId) {
+    const { data, error } = await supabaseClient
+        .from('peak_results')
+        .select('*, player:players(*), team:teams(*, team_players(*, player:players(*)))')
+        .eq('round_id', roundId)
+        .order('ladder_position', { ascending: true, nullsFirst: false });
+    if (error) throw error;
+    return data;
+}
+
 async function fetchMatchPlayerStats(matchId) {
     const { data, error } = await supabaseClient
         .from('match_player_stats')
@@ -232,16 +242,38 @@ function calculateHaloPoints(score, kills, deaths, assists, winMultiplier) {
 }
 
 /**
- * Calculate Peak points for a participant who completed (passed).
- * timeAllowedSeconds, timeTakenSeconds: integers.
- * winMultiplier: tier multiplier.
- * Returns { cfs, points }.
+ * Calculate Peak result for a single participant.
+ * Returns { completed, base, speedMultiplier, cfs, points }
  */
-function calculatePeakCompletion(timeAllowedSeconds, timeTakenSeconds, winMultiplier) {
-    const base = timeAllowedSeconds - timeTakenSeconds;
-    const cfs = base * winMultiplier;
-    const points = cfs / 100;
-    return { cfs, points };
+function calculatePeakResult(completed, timeTakenSeconds, distanceAchieved, courseDistance, timeAllowedSeconds, speedMultipliersEnabled) {
+    if (completed) {
+        const timeBonus = timeAllowedSeconds - timeTakenSeconds;
+        const base = courseDistance + timeBonus;
+        let multiplier = 1.0;
+        if (speedMultipliersEnabled) {
+            if (timeTakenSeconds < 3600) multiplier = 1.50;
+            else if (timeTakenSeconds <= 7200) multiplier = 1.25;
+        }
+        const cfs = Math.round(base * multiplier * 100) / 100;
+        const points = Math.round(cfs / 100 * 100) / 100;
+        return { completed: true, base, speedMultiplier: multiplier, cfs, points };
+    } else {
+        const cfs = Math.round((distanceAchieved || 0) * 100) / 100;
+        const points = Math.round(cfs / 100 * 100) / 100;
+        return { completed: false, base: distanceAchieved || 0, speedMultiplier: 1.0, cfs, points };
+    }
+}
+
+/**
+ * Rank peak results array in-place. Finishers above DNF, then by CFS desc.
+ * Adds ladder_position (1-indexed) to each entry.
+ */
+function rankPeakResults(results) {
+    const finishers = results.filter(r => r.completed).sort((a, b) => b.cfs - a.cfs);
+    const dnf = results.filter(r => !r.completed).sort((a, b) => b.cfs - a.cfs);
+    const ranked = [...finishers, ...dnf];
+    ranked.forEach((r, i) => { r.ladder_position = i + 1; });
+    return ranked;
 }
 
 /**
