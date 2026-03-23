@@ -14,9 +14,13 @@ ALTER TABLE rounds
   ADD COLUMN IF NOT EXISTS placement_ladder JSONB DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS use_win_multiplier BOOLEAN NOT NULL DEFAULT false;
 
--- 3. Upgrade player_points.points to DECIMAL
+-- 3. Upgrade player_points.points to DECIMAL and expand source constraint
 ALTER TABLE player_points
   ALTER COLUMN points TYPE DECIMAL(10,2) USING points::DECIMAL(10,2);
+
+ALTER TABLE player_points DROP CONSTRAINT IF EXISTS player_points_source_check;
+ALTER TABLE player_points ADD CONSTRAINT player_points_source_check
+  CHECK (source IN ('ffa_placement', 'match_win', 'placement_bonus', 'match_halo', 'match_peak'));
 
 -- 4. Upgrade ffa_results and add Halo stat columns
 ALTER TABLE ffa_results
