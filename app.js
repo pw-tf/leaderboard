@@ -47,7 +47,7 @@ function showToast(message, type = 'success') {
 // AUTH HELPERS
 // ============================================
 async function getSession() {
-    const { data: { session } } = await supabaseClientClient.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     return session;
 }
 
@@ -57,13 +57,13 @@ async function isAdmin() {
 }
 
 async function signIn(email, password) {
-    const { data, error } = await supabaseClientClient.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
 }
 
 async function signOut() {
-    const { error } = await supabaseClientClient.auth.signOut();
+    const { error } = await supabaseClient.auth.signOut();
     if (error) throw error;
 }
 

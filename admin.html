@@ -284,7 +284,7 @@
         const real_name = document.getElementById('new-realname').value.trim();
         if (!gamertag || !real_name) return showToast('Fill in both fields', 'error');
         try {
-            const { error } = await supabaseClientClient.from('players').insert({ gamertag, real_name });
+            const { error } = await supabaseClient.from('players').insert({ gamertag, real_name });
             if (error) throw error;
             document.getElementById('new-gamertag').value = '';
             document.getElementById('new-realname').value = '';
@@ -299,7 +299,7 @@
     async function deletePlayer(id) {
         if (!confirm('Delete this player?')) return;
         try {
-            const { error } = await supabaseClientClient.from('players').delete().eq('id', id);
+            const { error } = await supabaseClient.from('players').delete().eq('id', id);
             if (error) throw error;
             showToast('Player removed');
             players = await fetchPlayers();
@@ -364,7 +364,7 @@
         }
 
         try {
-            const { error } = await supabaseClientClient.from('games').insert(gameData);
+            const { error } = await supabaseClient.from('games').insert(gameData);
             if (error) throw error;
             document.getElementById('new-game-name').value = '';
             document.getElementById('new-game-placements').value = '';
@@ -379,7 +379,7 @@
     async function deleteGame(id) {
         if (!confirm('Delete this game? Associated matches will also be deleted.')) return;
         try {
-            const { error } = await supabaseClientClient.from('games').delete().eq('id', id);
+            const { error } = await supabaseClient.from('games').delete().eq('id', id);
             if (error) throw error;
             showToast('Game removed');
             games = await fetchGames();
@@ -414,7 +414,7 @@
         const sort_order = parseInt(document.getElementById('new-round-order').value) || 0;
         if (!name) return showToast('Enter a round name', 'error');
         try {
-            const { error } = await supabaseClientClient.from('rounds').insert({ name, sort_order });
+            const { error } = await supabaseClient.from('rounds').insert({ name, sort_order });
             if (error) throw error;
             document.getElementById('new-round-name').value = '';
             showToast(`${name} added`);
@@ -428,7 +428,7 @@
     async function deleteRound(id) {
         if (!confirm('Delete this round and all its matches?')) return;
         try {
-            const { error } = await supabaseClientClient.from('rounds').delete().eq('id', id);
+            const { error } = await supabaseClient.from('rounds').delete().eq('id', id);
             if (error) throw error;
             showToast('Round removed');
             rounds = await fetchRounds();
@@ -520,7 +520,7 @@
 
             // Insert solo results
             const soloResults = results.map(r => ({ ...r, match_id: matchData.id }));
-            const { error: resErr } = await supabaseClientClient.from('match_solo_results').insert(soloResults);
+            const { error: resErr } = await supabaseClient.from('match_solo_results').insert(soloResults);
             if (resErr) throw resErr;
 
             showToast('Solo match recorded!');
@@ -650,7 +650,7 @@
                 ...alphaPlayers.map(p => ({ match_team_id: alphaTeam.id, player_id: p.id })),
                 ...bravoPlayers.map(p => ({ match_team_id: bravoTeam.id, player_id: p.id }))
             ];
-            const { error: assignErr } = await supabaseClientClient.from('match_team_players').insert(playerAssigns);
+            const { error: assignErr } = await supabaseClient.from('match_team_players').insert(playerAssigns);
             if (assignErr) throw assignErr;
 
             // Record points
@@ -661,7 +661,7 @@
                 ...alphaPlayers.map(p => ({ match_team_id: alphaTeam.id, player_id: p.id, points_awarded: alphaPts })),
                 ...bravoPlayers.map(p => ({ match_team_id: bravoTeam.id, player_id: p.id, points_awarded: bravoPts }))
             ];
-            const { error: ptsErr } = await supabaseClientClient.from('match_team_results').insert(pointResults);
+            const { error: ptsErr } = await supabaseClient.from('match_team_results').insert(pointResults);
             if (ptsErr) throw ptsErr;
 
             showToast('Team match recorded!');
