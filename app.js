@@ -198,8 +198,7 @@ async function fetchPlayerPointsDetail(playerId) {
     const { data, error } = await supabaseClient
         .from('player_points_detail')
         .select('*')
-        .eq('player_id', playerId)
-        .order('created_at', { ascending: true });
+        .eq('player_id', playerId);
     if (error) throw error;
     return data;
 }

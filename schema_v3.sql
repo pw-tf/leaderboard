@@ -18,7 +18,19 @@ ALTER TABLE rounds
 ALTER TABLE player_points
   ALTER COLUMN points TYPE DECIMAL(10,2) USING points::DECIMAL(10,2);
 
-ALTER TABLE player_points DROP CONSTRAINT IF EXISTS player_points_source_check;
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT conname FROM pg_constraint
+    WHERE conrelid = 'player_points'::regclass
+      AND contype = 'c'
+      AND pg_get_constraintdef(oid) LIKE '%source%'
+  LOOP
+    EXECUTE 'ALTER TABLE player_points DROP CONSTRAINT ' || quote_ident(r.conname);
+  END LOOP;
+END $$;
+
 ALTER TABLE player_points ADD CONSTRAINT player_points_source_check
   CHECK (source IN ('ffa_placement', 'match_win', 'placement_bonus', 'match_halo', 'match_peak'));
 
