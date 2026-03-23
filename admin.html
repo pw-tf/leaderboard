@@ -1297,13 +1297,21 @@
             // Halo mode: enter stats, auto-rank by CFS
             players.forEach(p => {
                 const ex = existingMap[p.id] || {};
+                const exKda = ex.kda != null ? parseFloat(ex.kda).toFixed(2) : '';
                 rowsHtml += `
-                    <div class="ffa-placement-row" style="flex-wrap:wrap;gap:var(--space-sm);">
-                        <span class="ffa-placement-name" style="min-width:120px;">${escapeHtml(p.gamertag)}</span>
-                        <input type="number" class="form-input" id="ffa-score-${p.id}" data-player-id="${p.id}" placeholder="Score" value="${ex.score ?? ''}" min="0" style="width:90px;" title="In-game score">
-                        <input type="number" class="form-input" id="ffa-kills-${p.id}" placeholder="K" value="${ex.kills ?? ''}" min="0" style="width:60px;" title="Kills">
-                        <input type="number" class="form-input" id="ffa-deaths-${p.id}" placeholder="D" value="${ex.deaths ?? ''}" min="0" style="width:60px;" title="Deaths">
-                        <input type="number" class="form-input" id="ffa-assists-${p.id}" placeholder="A" value="${ex.assists ?? ''}" min="0" style="width:60px;" title="Assists">
+                    <div class="ffa-placement-row" style="flex-wrap:wrap;gap:var(--space-sm);align-items:flex-start;">
+                        <span class="ffa-placement-name" style="min-width:120px;padding-top:6px;">${escapeHtml(p.gamertag)}</span>
+                        <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+                            <input type="number" class="form-input" id="ffa-score-${p.id}" data-player-id="${p.id}" placeholder="Score" value="${ex.score ?? ''}" min="0" title="In-game score">
+                            <div class="kda-simple-inputs" style="display:flex;gap:4px;">
+                                <input type="number" class="form-input" id="ffa-kda-${p.id}" placeholder="KDA (e.g. 2.50)" value="${exKda}" step="0.01" min="0" style="flex:1;">
+                            </div>
+                            <div class="kda-full-inputs" style="display:none;gap:4px;">
+                                <input type="number" class="form-input" id="ffa-kills-${p.id}" placeholder="K" value="${ex.kills ?? ''}" min="0" style="flex:1;" title="Kills">
+                                <input type="number" class="form-input" id="ffa-deaths-${p.id}" placeholder="D" value="${ex.deaths ?? ''}" min="0" style="flex:1;" title="Deaths">
+                                <input type="number" class="form-input" id="ffa-assists-${p.id}" placeholder="A" value="${ex.assists ?? ''}" min="0" style="flex:1;" title="Assists">
+                            </div>
+                        </div>
                     </div>
                 `;
             });
@@ -1328,7 +1336,13 @@
                     <span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);">${{ halo:'Halo', peak:'Peak', simple_score:'Simple Score' }[round.scoring_mode] || ''}</span>
                 </div>
                 ${ladderDisplay ? `<p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">Placement points: ${ladderDisplay}</p>` : ''}
-                ${isHalo ? '<p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">Enter stats. Players will be auto-ranked by CFS (Score × KDA). Points = CFS ÷ 100.</p>' : ''}
+                ${isHalo ? `<div style="margin-bottom:var(--space-md);">
+                    <label style="display:flex;align-items:center;gap:var(--space-sm);font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);cursor:pointer;">
+                        <input type="checkbox" id="ffa-simple-kda" checked onchange="toggleKdaMode('ffa-simple-kda')" style="accent-color:var(--neon-cyan);width:14px;height:14px;">
+                        Simple KDA (enter decimal directly)
+                    </label>
+                    <p style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim);margin-top:4px;">CFS = Score × KDA. Players auto-ranked by CFS. Points = CFS ÷ 100.</p>
+                </div>` : ''}
 
                 <h3 style="font-family:var(--font-display);font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-secondary);margin-bottom:var(--space-md);">${isHalo ? 'Enter Stats' : 'Assign Placements'}</h3>
                 <div id="ffa-placement-form">
@@ -1348,15 +1362,23 @@
 
         if (isHalo) {
             // Collect stats per player
+            const isSimpleKda = document.getElementById('ffa-simple-kda').checked;
             const statRows = [];
             document.querySelectorAll('[id^="ffa-score-"]').forEach(scoreEl => {
                 const playerId = scoreEl.dataset.playerId;
                 const score = parseFloat(scoreEl.value);
-                const kills = parseInt(document.getElementById(`ffa-kills-${playerId}`).value) || 0;
-                const deaths = parseInt(document.getElementById(`ffa-deaths-${playerId}`).value) || 0;
-                const assists = parseInt(document.getElementById(`ffa-assists-${playerId}`).value) || 0;
                 if (isNaN(score)) return; // skip empty rows
-                const { kda, cfs, points } = calculateHaloPoints(score, kills, deaths, assists, 1.0);
+                let kda, kills = null, deaths = null, assists = null, cfs, points;
+                if (isSimpleKda) {
+                    kda = parseFloat(document.getElementById(`ffa-kda-${playerId}`)?.value) || 0;
+                    cfs = score * kda;
+                    points = cfs / 100;
+                } else {
+                    kills = parseInt(document.getElementById(`ffa-kills-${playerId}`)?.value) || 0;
+                    deaths = parseInt(document.getElementById(`ffa-deaths-${playerId}`)?.value) || 0;
+                    assists = parseInt(document.getElementById(`ffa-assists-${playerId}`)?.value) || 0;
+                    ({ kda, cfs, points } = calculateHaloPoints(score, kills, deaths, assists, 1.0));
+                }
                 statRows.push({ player_id: playerId, score, kills, deaths, assists, kda, cfs, points });
             });
 
@@ -1517,32 +1539,52 @@
 
         let statsHtml = '';
         if (mode === 'halo') {
-            function playerStatRows(pName, pList, prefix) {
-                if (pList.length === 0) return `<div class="form-group"><label class="form-label">${escapeHtml(pName)} — Score</label><input type="number" id="${prefix}-score-solo" class="form-input" placeholder="Score" min="0"><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm);"><input type="number" id="${prefix}-kills-solo" class="form-input" placeholder="K" style="flex:1;" min="0"><input type="number" id="${prefix}-deaths-solo" class="form-input" placeholder="D" style="flex:1;" min="0"><input type="number" id="${prefix}-assists-solo" class="form-input" placeholder="A" style="flex:1;" min="0"></div></div>`;
+            function playerStatRows(pList, prefix) {
+                if (pList.length === 0) {
+                    return `
+                        <div class="form-group">
+                            <input type="number" id="${prefix}-score-solo" class="form-input" placeholder="Score" min="0" style="margin-bottom:4px;">
+                            <div class="kda-simple-inputs" style="display:flex;gap:4px;">
+                                <input type="number" id="${prefix}-kda-solo" class="form-input" placeholder="KDA (e.g. 2.50)" step="0.01" min="0">
+                            </div>
+                            <div class="kda-full-inputs" style="display:none;gap:4px;">
+                                <input type="number" id="${prefix}-kills-solo" class="form-input" placeholder="K" min="0" style="flex:1;">
+                                <input type="number" id="${prefix}-deaths-solo" class="form-input" placeholder="D" min="0" style="flex:1;">
+                                <input type="number" id="${prefix}-assists-solo" class="form-input" placeholder="A" min="0" style="flex:1;">
+                            </div>
+                        </div>`;
+                }
                 return pList.map(p => `
                     <div class="form-group">
                         <label class="form-label" style="color:var(--text-secondary);">${escapeHtml(p.gamertag)}</label>
-                        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
-                            <input type="number" id="${prefix}-score-${p.id}" data-player="${p.id}" class="form-input halo-score-input" placeholder="Score" min="0" style="flex:2;min-width:80px;">
-                            <input type="number" id="${prefix}-kills-${p.id}" class="form-input" placeholder="K" min="0" style="flex:1;min-width:50px;">
-                            <input type="number" id="${prefix}-deaths-${p.id}" class="form-input" placeholder="D" min="0" style="flex:1;min-width:50px;">
-                            <input type="number" id="${prefix}-assists-${p.id}" class="form-input" placeholder="A" min="0" style="flex:1;min-width:50px;">
+                        <input type="number" id="${prefix}-score-${p.id}" data-player="${p.id}" class="form-input" placeholder="Score" min="0" style="margin-bottom:4px;">
+                        <div class="kda-simple-inputs" style="display:flex;gap:4px;">
+                            <input type="number" id="${prefix}-kda-${p.id}" class="form-input" placeholder="KDA (e.g. 2.50)" step="0.01" min="0">
+                        </div>
+                        <div class="kda-full-inputs" style="display:none;gap:4px;">
+                            <input type="number" id="${prefix}-kills-${p.id}" class="form-input" placeholder="K" min="0" style="flex:1;">
+                            <input type="number" id="${prefix}-deaths-${p.id}" class="form-input" placeholder="D" min="0" style="flex:1;">
+                            <input type="number" id="${prefix}-assists-${p.id}" class="form-input" placeholder="A" min="0" style="flex:1;">
                         </div>
                     </div>
                 `).join('');
             }
             statsHtml = `
+                <label style="display:flex;align-items:center;gap:var(--space-sm);font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);cursor:pointer;margin-bottom:var(--space-md);">
+                    <input type="checkbox" id="match-simple-kda" checked onchange="toggleKdaMode('match-simple-kda')" style="accent-color:var(--neon-cyan);width:14px;height:14px;">
+                    Simple KDA (enter decimal directly)
+                </label>
                 <div style="display:flex;gap:var(--space-lg);flex-wrap:wrap;">
-                    <div style="flex:1;min-width:200px;">
+                    <div style="flex:1;min-width:180px;">
                         <div class="form-label" style="margin-bottom:var(--space-sm);color:var(--neon-cyan);">${escapeHtml(p1Name)}</div>
-                        ${playerStatRows(p1Name, p1Players, 'p1')}
+                        ${playerStatRows(p1Players, 'p1')}
                     </div>
-                    <div style="flex:1;min-width:200px;">
+                    <div style="flex:1;min-width:180px;">
                         <div class="form-label" style="margin-bottom:var(--space-sm);color:var(--neon-cyan);">${escapeHtml(p2Name)}</div>
-                        ${playerStatRows(p2Name, p2Players, 'p2')}
+                        ${playerStatRows(p2Players, 'p2')}
                     </div>
                 </div>
-                <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Winner is determined by total team CFS. Points = CFS ÷ 100${round.use_win_multiplier ? ' × round multiplier' : ''}.</p>
+                <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Winner = higher total CFS. Points = CFS ÷ 100${round.use_win_multiplier ? ' × round multiplier' : ''}.</p>
             `;
         } else if (mode === 'peak') {
             const timeAllowed = (round.time_allowed_minutes || 10) * 60;
@@ -1638,6 +1680,12 @@
         document.getElementById('match-modal-overlay').classList.remove('show');
     }
 
+    function toggleKdaMode(checkboxId) {
+        const simple = document.getElementById(checkboxId).checked;
+        document.querySelectorAll('.kda-simple-inputs').forEach(el => el.style.display = simple ? 'flex' : 'none');
+        document.querySelectorAll('.kda-full-inputs').forEach(el => el.style.display = simple ? 'none' : 'flex');
+    }
+
     async function recordMatchResult(matchId, p1Id, p2Id, p1PlayerIds, p2PlayerIds, maxBracketRound) {
         const match = managedMatches.find(m => m.id === matchId);
         if (!match) return showToast('Match not found', 'error');
@@ -1652,19 +1700,25 @@
 
         try {
             if (mode === 'halo') {
+                const isSimpleKda = document.getElementById('match-simple-kda').checked;
                 // Collect stats for each player on each side, sum CFS per side to determine winner
                 function collectHaloStats(playerIds, prefix) {
                     return playerIds.map(pid => {
-                        const scoreEl = document.getElementById(`${prefix}-score-${pid}`) || document.getElementById(`${prefix}-score-solo`);
-                        const killsEl = document.getElementById(`${prefix}-kills-${pid}`) || document.getElementById(`${prefix}-kills-solo`);
-                        const deathsEl = document.getElementById(`${prefix}-deaths-${pid}`) || document.getElementById(`${prefix}-deaths-solo`);
-                        const assistsEl = document.getElementById(`${prefix}-assists-${pid}`) || document.getElementById(`${prefix}-assists-solo`);
-                        const s = parseFloat(scoreEl ? scoreEl.value : 0) || 0;
-                        const k = parseInt(killsEl ? killsEl.value : 0) || 0;
-                        const d = parseInt(deathsEl ? deathsEl.value : 0) || 0;
-                        const a = parseInt(assistsEl ? assistsEl.value : 0) || 0;
-                        const { kda, cfs, points } = calculateHaloPoints(s, k, d, a, mult);
-                        return { player_id: pid, match_id: matchId, score: s, kills: k, deaths: d, assists: a, kda, cfs, points_awarded: points };
+                        const sfx = pid;
+                        const scoreEl = document.getElementById(`${prefix}-score-${sfx}`);
+                        const s = parseFloat(scoreEl?.value) || 0;
+                        let kda, kills = null, deaths = null, assists = null, cfs, points;
+                        if (isSimpleKda) {
+                            kda = parseFloat(document.getElementById(`${prefix}-kda-${sfx}`)?.value) || 0;
+                            cfs = s * kda * mult;
+                            points = cfs / 100;
+                        } else {
+                            kills = parseInt(document.getElementById(`${prefix}-kills-${sfx}`)?.value) || 0;
+                            deaths = parseInt(document.getElementById(`${prefix}-deaths-${sfx}`)?.value) || 0;
+                            assists = parseInt(document.getElementById(`${prefix}-assists-${sfx}`)?.value) || 0;
+                            ({ kda, cfs, points } = calculateHaloPoints(s, kills, deaths, assists, mult));
+                        }
+                        return { player_id: pid, match_id: matchId, score: s, kills, deaths, assists, kda, cfs, points_awarded: points };
                     });
                 }
 
