@@ -1127,6 +1127,7 @@
                     const matchInserts = generateBracketMatches(participants, 'solo_bracket', round.id);
                     const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
                     if (matchErr) throw matchErr;
+                    await cascadeByeAdvancement(round.id, 'player');
                 }
 
             } else {
@@ -1178,6 +1179,7 @@
                 const matchInserts = generateBracketMatches(teamParticipants, 'team_bracket', round.id);
                 const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
                 if (matchErr) throw matchErr;
+                await cascadeByeAdvancement(round.id, 'team');
             }
 
             showToast(`Round "${wizardData.name}" created!`);
@@ -1507,6 +1509,81 @@
                 source: 'match_win'
             });
             if (error) throw error;
+        }
+    }
+
+    // After bracket creation, push all bye-winners forward into subsequent round slots.
+    // Also auto-completes any "double-null bye" slots (bracketSize > participant count).
+    async function cascadeByeAdvancement(roundId, participantType) {
+        const { data: matches, error } = await supabaseClient
+            .from('bracket_matches')
+            .select('*')
+            .eq('round_id', roundId)
+            .order('bracket_round', { ascending: true })
+            .order('bracket_position', { ascending: true });
+        if (error) throw error;
+
+        const byRound = {};
+        let maxRound = 0;
+        matches.forEach(m => {
+            if (!byRound[m.bracket_round]) byRound[m.bracket_round] = [];
+            byRound[m.bracket_round].push(m);
+            if (m.bracket_round > maxRound) maxRound = m.bracket_round;
+        });
+
+        for (let r = 1; r < maxRound; r++) {
+            const current = byRound[r] || [];
+            const next = byRound[r + 1] || [];
+
+            // Advance every bye winner into the appropriate slot of the next round
+            for (const match of current) {
+                if (match.status !== 'bye' || !match.winner_id) continue;
+
+                const nextPos = Math.floor(match.bracket_position / 2);
+                const slot = match.bracket_position % 2 === 0 ? 1 : 2;
+                const nextMatch = next.find(m => m.bracket_position === nextPos);
+                if (!nextMatch) continue;
+
+                // Skip if already filled (two byes feeding same next-match)
+                const alreadyFilled = slot === 1 ? nextMatch.participant_1_id : nextMatch.participant_2_id;
+                if (alreadyFilled) continue;
+
+                const updateData = slot === 1
+                    ? { participant_1_type: participantType, participant_1_id: match.winner_id }
+                    : { participant_2_type: participantType, participant_2_id: match.winner_id };
+
+                const { error: upErr } = await supabaseClient
+                    .from('bracket_matches')
+                    .update(updateData)
+                    .eq('id', nextMatch.id);
+                if (upErr) throw upErr;
+                Object.assign(nextMatch, updateData);
+            }
+
+            // Auto-complete any next-round match where one slot is filled and the
+            // other feeder is a double-null bye (can never produce a winner)
+            for (const nextMatch of next) {
+                const hasP1 = !!nextMatch.participant_1_id;
+                const hasP2 = !!nextMatch.participant_2_id;
+                if (hasP1 && hasP2) continue; // real match
+                if (!hasP1 && !hasP2) continue; // still fully empty
+
+                const emptySlot = hasP1 ? 2 : 1;
+                const emptyFeederPos = emptySlot === 1
+                    ? nextMatch.bracket_position * 2
+                    : nextMatch.bracket_position * 2 + 1;
+                const emptyFeeder = current.find(m => m.bracket_position === emptyFeederPos);
+
+                if (emptyFeeder && emptyFeeder.status === 'bye' && !emptyFeeder.winner_id) {
+                    const autoWinnerId = nextMatch.participant_1_id || nextMatch.participant_2_id;
+                    const { error: byeErr } = await supabaseClient
+                        .from('bracket_matches')
+                        .update({ status: 'bye', winner_id: autoWinnerId })
+                        .eq('id', nextMatch.id);
+                    if (byeErr) throw byeErr;
+                    Object.assign(nextMatch, { status: 'bye', winner_id: autoWinnerId });
+                }
+            }
         }
     }
 
