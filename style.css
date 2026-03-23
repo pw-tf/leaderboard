@@ -68,6 +68,7 @@
 html {
     font-size: 16px;
     scroll-behavior: smooth;
+    overflow-x: hidden;
 }
 
 body {
@@ -890,10 +891,14 @@ a:hover {
    ============================================ */
 
 @media (max-width: 600px) {
+    /* Layout */
     .app-container {
         padding: var(--space-sm);
+        overflow-x: hidden;
+        max-width: 100vw;
     }
 
+    /* Header */
     .site-title {
         letter-spacing: 2px;
     }
@@ -902,41 +907,90 @@ a:hover {
         gap: var(--space-xs);
     }
 
+    /* Nav links — larger touch targets */
     .nav-link {
         font-size: 0.6rem;
-        padding: 6px 10px;
+        padding: 8px 14px;
+        letter-spacing: 1px;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Panel — allow horizontal scroll for table overflow */
+    .panel {
+        padding: var(--space-sm) var(--space-xs);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Leaderboard table */
+    .leaderboard th,
+    .leaderboard td {
+        padding: var(--space-xs) var(--space-sm);
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .leaderboard th {
+        font-size: 0.55rem;
         letter-spacing: 1px;
     }
 
-    .leaderboard th,
-    .leaderboard td {
-        padding: var(--space-sm);
+    .leaderboard .rank {
+        font-size: 0.75rem;
+    }
+
+    .leaderboard .gamertag {
+        font-size: 0.8rem;
+    }
+
+    .leaderboard .points {
         font-size: 0.85rem;
+    }
+
+    /* Match cards */
+    .match-card {
+        padding: var(--space-sm);
     }
 
     .team-vs {
         flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .vs-divider {
+        padding: var(--space-xs) 0;
     }
 
     .team-block {
         width: 100%;
     }
 
-    .admin-tabs {
-        gap: 2px;
+    /* Gamertag — switch from hover tooltip to tap-reveal inline */
+    .gamertag .real-name {
+        position: static;
+        display: none;
+        margin-top: 2px;
+        font-size: 0.7rem;
+        white-space: normal;
     }
 
-    .admin-tab {
-        font-size: 0.55rem;
-        padding: 6px 8px;
+    .gamertag.show-name .real-name {
+        display: block;
     }
 
-    .player-select-grid {
-        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    /* Buttons — larger touch targets */
+    .btn {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .modal {
-        padding: var(--space-md);
+    .btn-sm {
+        min-height: 36px;
     }
 
     .btn-group {
@@ -946,5 +1000,96 @@ a:hover {
     .btn-group .btn {
         width: 100%;
         text-align: center;
+    }
+
+    /* Game filter buttons */
+    .game-filter-btn {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 12px;
+    }
+
+    /* Admin tabs — scrollable row with better tap targets */
+    .admin-tabs {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: var(--space-xs);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: var(--space-sm);
+        scrollbar-width: none;
+    }
+
+    .admin-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .admin-tab {
+        font-size: 0.55rem;
+        padding: 8px 10px;
+        letter-spacing: 1px;
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    /* Admin list items — stack on mobile */
+    .admin-list-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--space-sm);
+    }
+
+    .admin-list-item .btn-group {
+        justify-content: flex-start;
+    }
+
+    /* Player chips — better touch targets */
+    .player-select-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    }
+
+    .player-chip {
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Form labels */
+    .form-label {
+        font-size: 0.6rem;
+        letter-spacing: 1px;
+    }
+
+    /* Toast — centered, constrained width */
+    .toast {
+        left: var(--space-sm);
+        right: var(--space-sm);
+        text-align: center;
+        max-width: calc(100vw - 16px);
+    }
+
+    /* Modal */
+    .modal-overlay {
+        padding: var(--space-sm);
+    }
+
+    .modal {
+        padding: var(--space-md);
+        max-height: 90vh;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Stack win/lose points fields vertically on very narrow screens */
+    .points-row {
+        flex-direction: column;
+    }
+
+    .points-row .form-group {
+        width: 100%;
     }
 }
