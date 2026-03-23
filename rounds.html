@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS ARENA // Rounds</title>
+    <title>THE CHEESE BOARD // Rounds</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .round-card {
@@ -99,7 +99,7 @@
 <body>
     <div class="app-container">
         <header class="site-header">
-            <h1 class="site-title">Nexus Arena</h1>
+            <h1 class="site-title">THE CHEESE BOARD</h1>
             <p class="site-subtitle">// Game Competition Leaderboard //</p>
             <nav class="nav-bar">
                 <a href="index.html" class="nav-link">Standings</a>
@@ -127,6 +127,12 @@
         function getStatusBadge(status) {
             if (status === 'active') return '<span class="badge badge-active">Active</span>';
             return '<span class="badge badge-completed">Completed</span>';
+        }
+
+        function getScoringBadge(mode) {
+            const labels = { halo: 'Halo', peak: 'Peak', simple_score: 'Simple Score' };
+            const label = labels[mode] || mode || 'Simple Score';
+            return `<span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);">${escapeHtml(label)}</span>`;
         }
 
         async function loadRounds() {
@@ -172,6 +178,7 @@
                             <div class="round-card-meta">
                                 ${getTypeBadge(round.type)}
                                 ${getStatusBadge(round.status)}
+                                ${getScoringBadge(round.scoring_mode)}
                                 ${countStr ? `<span class="round-count">${escapeHtml(countStr)}</span>` : ''}
                             </div>
                         </a>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS ARENA // Round</title>
+    <title>THE CHEESE BOARD // Round</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .round-hero {
@@ -119,7 +119,7 @@
 <body>
     <div class="app-container">
         <header class="site-header">
-            <h1 class="site-title">Nexus Arena</h1>
+            <h1 class="site-title">THE CHEESE BOARD</h1>
             <p class="site-subtitle">// Game Competition Leaderboard //</p>
             <nav class="nav-bar">
                 <a href="index.html" class="nav-link">Standings</a>
@@ -156,18 +156,21 @@
             const hero = document.getElementById('round-hero');
             hero.classList.remove('loading');
 
-            let pointInfo = '';
-            if (round.type === 'ffa') {
-                const pts = round.ffa_placement_points || {};
-                const ptsList = Object.entries(pts).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(' &bull; ');
-                pointInfo = ptsList ? `<div class="stat-chip">Placement Points<span>${ptsList}</span></div>` : '';
-            } else {
-                pointInfo = `
-                    <div class="stat-chip">Match Win<span>${round.match_win_points}pts</span></div>
-                    <div class="stat-chip">1st Place<span>+${round.placement_1st_points}pts</span></div>
-                    <div class="stat-chip">2nd Place<span>+${round.placement_2nd_points}pts</span></div>
-                    <div class="stat-chip">3rd Place<span>+${round.placement_3rd_points}pts</span></div>
-                `;
+            const modeLabels = { halo: 'Halo', peak: 'Peak', simple_score: 'Simple Score' };
+            const modeLabel = modeLabels[round.scoring_mode] || 'Simple Score';
+
+            const ladder = round.placement_ladder || round.ffa_placement_points || {};
+            const ladderPts = Object.entries(ladder).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(' &bull; ');
+
+            let pointInfo = `<div class="stat-chip">Scoring<span>${escapeHtml(modeLabel)}</span></div>`;
+            if (round.scoring_mode === 'peak' && round.time_allowed_minutes) {
+                pointInfo += `<div class="stat-chip">Time Allowed<span>${round.time_allowed_minutes}min</span></div>`;
+            }
+            if (ladderPts) {
+                pointInfo += `<div class="stat-chip">Placement Pts<span>${ladderPts}</span></div>`;
+            }
+            if (round.use_win_multiplier) {
+                pointInfo += `<div class="stat-chip">Win Mult<span>Active</span></div>`;
             }
 
             hero.innerHTML = `
@@ -195,26 +198,27 @@
                     return;
                 }
 
-                let html = `
-                    <table class="leaderboard">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Player</th>
-                                <th style="text-align:right;">Points Awarded</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
-                results.forEach((r, i) => {
+                const isHalo = round.scoring_mode === 'halo';
+                let html = `<table class="leaderboard"><thead><tr>
+                    <th>Rank</th><th>Player</th>`;
+                if (isHalo) {
+                    html += `<th style="text-align:right;">Score</th><th style="text-align:right;">K/D/A</th><th style="text-align:right;">KDA</th><th style="text-align:right;">CFS</th>`;
+                }
+                html += `<th style="text-align:right;">Points</th></tr></thead><tbody>`;
+
+                results.forEach((r) => {
                     const p = r.player;
-                    html += `
-                        <tr>
-                            <td>${renderRank(r.placement - 1)}</td>
-                            <td>${p ? renderGamertag(p.gamertag, p.real_name) : '<span class="text-dim">Unknown</span>'}</td>
-                            <td style="text-align:right;">${renderPoints(r.points_awarded)}</td>
-                        </tr>
-                    `;
+                    html += `<tr>
+                        <td>${renderRank(r.placement - 1)}</td>
+                        <td>${p ? renderGamertag(p.gamertag, p.real_name) : '<span class="text-dim">Unknown</span>'}</td>`;
+                    if (isHalo) {
+                        html += `
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.score != null ? r.score : '—'}</td>
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.kills != null ? `${r.kills}/${r.deaths}/${r.assists}` : '—'}</td>
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.kda != null ? parseFloat(r.kda).toFixed(2) : '—'}</td>
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.cfs != null ? parseFloat(r.cfs).toFixed(2) : '—'}</td>`;
+                    }
+                    html += `<td style="text-align:right;">${renderPoints(r.points_awarded)}</td></tr>`;
                 });
                 html += '</tbody></table>';
                 resultsContainer.innerHTML = html;
@@ -227,7 +231,10 @@
 
         async function renderBracketRound(round) {
             const content = document.getElementById('round-content');
+            const isTeam = round.type === 'team_bracket';
+
             content.innerHTML = `
+                ${isTeam ? '<h2 class="section-header">Team <span class="accent">Rosters</span></h2><div id="rosters-container" class="loading">Loading rosters</div>' : ''}
                 <h2 class="section-header">Bracket</h2>
                 <div class="bracket-section">
                     <div class="bracket-container" id="bracket-render-area"></div>
@@ -246,14 +253,33 @@
                     round.type === 'team_bracket' ? fetchRoundTeams(round.id) : Promise.resolve([])
                 ]);
 
-                // Build players/teams arrays for name lookup
                 const players = roundPlayers.map(rp => rp.player).filter(Boolean);
                 const teams = roundTeams.map(rt => rt.team).filter(Boolean);
 
-                // Render bracket
+                // Render team rosters (expanded by default)
+                if (isTeam) {
+                    const rostersEl = document.getElementById('rosters-container');
+                    rostersEl.classList.remove('loading');
+                    if (teams.length === 0) {
+                        rostersEl.innerHTML = '<div class="empty-state">No teams found.</div>';
+                    } else {
+                        let rHtml = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:var(--space-md);">';
+                        teams.forEach(team => {
+                            const teamPlayers = (team.team_players || []).map(tp => tp.player).filter(Boolean);
+                            rHtml += `
+                                <div style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius-sm);padding:var(--space-md);">
+                                    <div style="font-family:var(--font-display);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--neon-magenta);margin-bottom:var(--space-sm);">${escapeHtml(team.team_label)}</div>
+                                    ${teamPlayers.map(p => `<div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-dim);">${escapeHtml(p.gamertag)}</div>`).join('')}
+                                </div>
+                            `;
+                        });
+                        rHtml += '</div>';
+                        rostersEl.innerHTML = rHtml;
+                    }
+                }
+
                 renderBracket(bracketArea, matches, players, teams, false, null);
 
-                // Render completed matches list
                 completedContainer.classList.remove('loading');
                 const completed = matches.filter(m => m.status === 'completed' && (m.participant_1_id || m.participant_2_id));
 
@@ -271,24 +297,47 @@
                         }
                     }
 
+                    // Fetch stats for all completed matches (Halo mode)
+                    let statsMap = {};
+                    if (round.scoring_mode === 'halo') {
+                        const statsArr = await Promise.all(completed.map(m => fetchMatchPlayerStats(m.id)));
+                        completed.forEach((m, i) => { statsMap[m.id] = statsArr[i] || []; });
+                    }
+
+                    const maxRound = matches.reduce((mx, m) => Math.max(mx, m.bracket_round), 0);
+                    const roundLabels = { [maxRound]: 'Final', [maxRound - 1]: 'Semis', [maxRound - 2]: 'Quarters' };
+
                     let html = '<div class="completed-matches">';
                     completed.forEach(m => {
                         const p1Name = getNameById(m.participant_1_type, m.participant_1_id);
                         const p2Name = getNameById(m.participant_2_type, m.participant_2_id);
                         const p1Win = m.winner_id === m.participant_1_id;
                         const p2Win = m.winner_id === m.participant_2_id;
-                        const roundLabel = m.bracket_round;
+                        const rlabel = roundLabels[m.bracket_round] || `Round ${m.bracket_round}`;
+
+                        const matchStats = statsMap[m.id] || [];
+                        let statsHtml = '';
+                        if (matchStats.length > 0) {
+                            statsHtml = `<div style="margin-top:var(--space-sm);font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim);">`;
+                            matchStats.forEach(s => {
+                                const pName = s.player ? s.player.gamertag : '?';
+                                statsHtml += `<div style="padding:2px 0;">${escapeHtml(pName)}: Score ${s.score ?? '—'} K/D/A ${s.kills ?? '—'}/${s.deaths ?? '—'}/${s.assists ?? '—'} KDA ${s.kda != null ? parseFloat(s.kda).toFixed(2) : '—'} CFS ${s.cfs != null ? parseFloat(s.cfs).toFixed(2) : '—'} (+${s.points_awarded != null ? parseFloat(s.points_awarded).toFixed(2) : '—'}pts)</div>`;
+                            });
+                            statsHtml += '</div>';
+                        }
+
                         html += `
                             <div class="bracket-match-summary">
-                                <div>
-                                    <div class="match-label">Round ${escapeHtml(String(roundLabel))} &bull; Match ${escapeHtml(String(m.bracket_position + 1))}</div>
+                                <div style="flex:1;">
+                                    <div class="match-label">${escapeHtml(rlabel)} &bull; Match ${escapeHtml(String(m.bracket_position + 1))}</div>
                                     <div class="match-participants">
                                         <span class="match-p ${p1Win ? 'winner' : ''}">${escapeHtml(p1Name)}${p1Win ? ' ★' : ''}</span>
                                         <span class="match-vs">VS</span>
                                         <span class="match-p ${p2Win ? 'winner' : ''}">${escapeHtml(p2Name)}${p2Win ? ' ★' : ''}</span>
                                     </div>
+                                    ${statsHtml}
                                 </div>
-                                ${(m.score_1 || m.score_2) ? `<div style="font-family:var(--font-mono);font-size:0.85rem;color:var(--neon-yellow);">${escapeHtml(m.score_1 || '-')} &ndash; ${escapeHtml(m.score_2 || '-')}</div>` : ''}
+                                ${(m.score_1 || m.score_2) ? `<div style="font-family:var(--font-mono);font-size:0.85rem;color:var(--neon-yellow);white-space:nowrap;">${escapeHtml(m.score_1 || '-')} &ndash; ${escapeHtml(m.score_2 || '-')}</div>` : ''}
                             </div>
                         `;
                     });
@@ -312,7 +361,7 @@
 
             try {
                 const round = await fetchRound(roundId);
-                document.title = `NEXUS ARENA // ${round.name}`;
+                document.title = `THE CHEESE BOARD // ${round.name}`;
                 renderRoundHero(round);
 
                 if (round.type === 'ffa') {

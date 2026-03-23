@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEXUS ARENA // Admin</title>
+    <title>THE CHEESE BOARD // Admin</title>
     <link rel="stylesheet" href="style.css">
     <style>
         .badge {
@@ -307,7 +307,7 @@
 <body>
     <div class="app-container">
         <header class="site-header">
-            <h1 class="site-title">Nexus Arena</h1>
+            <h1 class="site-title">THE CHEESE BOARD</h1>
             <p class="site-subtitle">// Admin Terminal //</p>
             <nav class="nav-bar">
                 <a href="index.html" class="nav-link">Standings</a>
@@ -604,6 +604,10 @@
     }
 
     function renderStep1(modal) {
+        const type = wizardData.type || 'ffa';
+        const scoringMode = wizardData.scoringMode || 'simple_score';
+        const useWinMult = wizardData.useWinMultiplier !== undefined ? wizardData.useWinMultiplier : (type === 'team_bracket');
+
         modal.innerHTML = `
             <div class="modal-title">New Round</div>
             <div class="modal-step-header">Step 1 of 3 — Basic Info</div>
@@ -614,14 +618,14 @@
             </div>
             <div class="form-group">
                 <label class="form-label">Game Name</label>
-                <input type="text" id="w-game-name" class="form-input" placeholder="e.g. Mario Kart 8" value="${escapeHtml(wizardData.gameName || '')}">
+                <input type="text" id="w-game-name" class="form-input" placeholder="e.g. Halo Infinite" value="${escapeHtml(wizardData.gameName || '')}">
             </div>
             <div class="form-group">
                 <label class="form-label">Round Type</label>
                 <select id="w-round-type" class="form-select" onchange="updateStep1TypeFields()">
-                    <option value="ffa" ${wizardData.type === 'ffa' ? 'selected' : ''}>FFA (Free-For-All)</option>
-                    <option value="solo_bracket" ${wizardData.type === 'solo_bracket' ? 'selected' : ''}>Solo Bracket</option>
-                    <option value="team_bracket" ${wizardData.type === 'team_bracket' ? 'selected' : ''}>Team Bracket</option>
+                    <option value="ffa" ${type === 'ffa' ? 'selected' : ''}>FFA (Free-For-All)</option>
+                    <option value="solo_bracket" ${type === 'solo_bracket' ? 'selected' : ''}>Solo Bracket</option>
+                    <option value="team_bracket" ${type === 'team_bracket' ? 'selected' : ''}>Team Bracket</option>
                 </select>
             </div>
             <div class="form-group">
@@ -630,36 +634,48 @@
             </div>
 
             <div class="collapsible-header" onclick="toggleCollapsible(this)">
-                <span class="chevron">▼</span> Point Configuration
+                <span class="chevron">▼</span> Scoring Configuration
             </div>
-            <div class="collapsible-body" id="points-config">
-                <div id="ffa-points-section">
+            <div class="collapsible-body" id="scoring-config">
+
+                <div class="form-group">
+                    <label class="form-label">Scoring Mode</label>
+                    <select id="w-scoring-mode" class="form-select" onchange="updateStep1ScoringFields()">
+                        <option value="halo" ${scoringMode === 'halo' ? 'selected' : ''}>Halo (Score × KDA / 100)</option>
+                        <option value="peak" ${scoringMode === 'peak' ? 'selected' : ''}>Peak (Time-based, bracket only)</option>
+                        <option value="simple_score" ${scoringMode === 'simple_score' ? 'selected' : ''}>Simple Score (Placement Ladder)</option>
+                    </select>
+                </div>
+
+                <!-- Simple Score / FFA: placement ladder -->
+                <div id="placement-ladder-section">
                     <div class="form-group">
                         <label class="form-label">Placement Points</label>
                         <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-bottom:var(--space-sm);">Format: "1:10, 2:7, 3:5, 4:3, 5:1" — placement:points</p>
-                        <textarea id="w-ffa-points" class="form-textarea" placeholder="1:10, 2:7, 3:5, 4:3, 5:1">${escapeHtml(wizardData.ffaPointsRaw || '')}</textarea>
+                        <textarea id="w-placement-ladder" class="form-textarea" placeholder="1:10, 2:7, 3:5, 4:3, 5:1">${escapeHtml(wizardData.placementLadderRaw || '')}</textarea>
                     </div>
                 </div>
-                <div id="bracket-points-section" style="display:none;">
-                    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
-                        <div class="form-group" style="flex:1;min-width:100px;">
-                            <label class="form-label">Match Win Pts</label>
-                            <input type="number" id="w-match-win" class="form-input" value="${wizardData.matchWin !== undefined ? wizardData.matchWin : 1}" min="0">
-                        </div>
-                        <div class="form-group" style="flex:1;min-width:100px;">
-                            <label class="form-label">1st Place Bonus</label>
-                            <input type="number" id="w-place-1" class="form-input" value="${wizardData.place1 !== undefined ? wizardData.place1 : 5}" min="0">
-                        </div>
-                        <div class="form-group" style="flex:1;min-width:100px;">
-                            <label class="form-label">2nd Place Bonus</label>
-                            <input type="number" id="w-place-2" class="form-input" value="${wizardData.place2 !== undefined ? wizardData.place2 : 3}" min="0">
-                        </div>
-                        <div class="form-group" style="flex:1;min-width:100px;">
-                            <label class="form-label">3rd Place Bonus</label>
-                            <input type="number" id="w-place-3" class="form-input" value="${wizardData.place3 !== undefined ? wizardData.place3 : 1}" min="0">
-                        </div>
+
+                <!-- Peak: time allowed -->
+                <div id="peak-section" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Time Allowed (minutes)</label>
+                        <input type="number" id="w-time-allowed" class="form-input" value="${wizardData.timeAllowedMinutes || 10}" min="1" style="width:120px;">
+                    </div>
+                    <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-bottom:var(--space-sm);">Players who fail (DNF) are ranked by distance covered using the placement ladder above.</p>
+                </div>
+
+                <!-- Win multiplier toggle (bracket only, hidden for FFA) -->
+                <div id="win-mult-section">
+                    <div class="form-group">
+                        <label class="form-label" style="display:flex;align-items:center;gap:var(--space-sm);cursor:pointer;">
+                            <input type="checkbox" id="w-use-win-mult" ${useWinMult ? 'checked' : ''} style="accent-color:var(--neon-cyan);width:14px;height:14px;">
+                            Use Win Multiplier (Prelim 1.25× / Semis 1.50× / Final 1.75×)
+                        </label>
+                        <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:4px;">On by default for team brackets. Applies to Halo and Peak modes.</p>
                     </div>
                 </div>
+
             </div>
 
             <div class="modal-nav">
@@ -668,16 +684,53 @@
             </div>
         `;
         updateStep1TypeFields();
+        updateStep1ScoringFields();
     }
 
     function updateStep1TypeFields() {
-        const type = document.getElementById('w-round-type') ? document.getElementById('w-round-type').value : (wizardData.type || 'ffa');
-        const ffaSec = document.getElementById('ffa-points-section');
-        const bracketSec = document.getElementById('bracket-points-section');
-        if (ffaSec && bracketSec) {
-            ffaSec.style.display = type === 'ffa' ? 'block' : 'none';
-            bracketSec.style.display = type !== 'ffa' ? 'block' : 'none';
+        const typeEl = document.getElementById('w-round-type');
+        if (!typeEl) return;
+        const type = typeEl.value;
+
+        const winMultSection = document.getElementById('win-mult-section');
+        const scoringModeEl = document.getElementById('w-scoring-mode');
+
+        // FFA can't use Peak mode
+        if (type === 'ffa' && scoringModeEl && scoringModeEl.value === 'peak') {
+            scoringModeEl.value = 'simple_score';
         }
+        // Hide Peak option for FFA
+        if (scoringModeEl) {
+            Array.from(scoringModeEl.options).forEach(opt => {
+                if (opt.value === 'peak') opt.style.display = type === 'ffa' ? 'none' : '';
+            });
+        }
+        // Win multiplier: visible for brackets only, default on for team
+        if (winMultSection) {
+            winMultSection.style.display = type === 'ffa' ? 'none' : 'block';
+        }
+        const winMultCb = document.getElementById('w-use-win-mult');
+        if (winMultCb && wizardData.useWinMultiplier === undefined) {
+            winMultCb.checked = type === 'team_bracket';
+        }
+
+        updateStep1ScoringFields();
+    }
+
+    function updateStep1ScoringFields() {
+        const scoringEl = document.getElementById('w-scoring-mode');
+        if (!scoringEl) return;
+        const mode = scoringEl.value;
+
+        const ladderSection = document.getElementById('placement-ladder-section');
+        const peakSection = document.getElementById('peak-section');
+
+        if (ladderSection) ladderSection.style.display = (mode === 'simple_score' || mode === 'halo') ? 'none' : 'none';
+        // Show placement ladder for simple_score AND FFA; Peak shows it for DNF ranks
+        const typeEl = document.getElementById('w-round-type');
+        const type = typeEl ? typeEl.value : 'ffa';
+        if (ladderSection) ladderSection.style.display = (mode === 'simple_score' || type === 'ffa' || mode === 'peak') ? 'block' : 'none';
+        if (peakSection) peakSection.style.display = mode === 'peak' ? 'block' : 'none';
     }
 
     function toggleCollapsible(header) {
@@ -691,34 +744,35 @@
         const gameName = document.getElementById('w-game-name').value.trim();
         const type = document.getElementById('w-round-type').value;
         const sortOrder = parseInt(document.getElementById('w-sort-order').value) || 0;
+        const scoringMode = document.getElementById('w-scoring-mode').value;
+        const useWinMultiplier = document.getElementById('w-use-win-mult') ? document.getElementById('w-use-win-mult').checked : false;
 
         if (!name) return showToast('Enter a round name', 'error');
         if (!gameName) return showToast('Enter a game name', 'error');
+
+        // Parse placement ladder
+        const raw = (document.getElementById('w-placement-ladder') || {}).value || '';
+        wizardData.placementLadderRaw = raw.trim();
+        const ladder = {};
+        if (raw.trim()) {
+            raw.split(',').forEach(part => {
+                const [k, v] = part.trim().split(':');
+                const placement = parseInt(k);
+                const pts = parseFloat(v);
+                if (!isNaN(placement) && !isNaN(pts)) ladder[String(placement)] = pts;
+            });
+        }
 
         wizardData.name = name;
         wizardData.gameName = gameName;
         wizardData.type = type;
         wizardData.sortOrder = sortOrder;
-
-        if (type === 'ffa') {
-            const raw = document.getElementById('w-ffa-points').value.trim();
-            wizardData.ffaPointsRaw = raw;
-            const pointsObj = {};
-            if (raw) {
-                raw.split(',').forEach(part => {
-                    const [k, v] = part.trim().split(':');
-                    const placement = parseInt(k);
-                    const pts = parseInt(v);
-                    if (!isNaN(placement) && !isNaN(pts)) pointsObj[String(placement)] = pts;
-                });
-            }
-            wizardData.ffaPoints = pointsObj;
-        } else {
-            wizardData.matchWin = parseInt(document.getElementById('w-match-win').value) || 1;
-            wizardData.place1 = parseInt(document.getElementById('w-place-1').value) || 5;
-            wizardData.place2 = parseInt(document.getElementById('w-place-2').value) || 3;
-            wizardData.place3 = parseInt(document.getElementById('w-place-3').value) || 1;
-        }
+        wizardData.scoringMode = scoringMode;
+        wizardData.useWinMultiplier = useWinMultiplier;
+        wizardData.placementLadder = ladder;
+        wizardData.timeAllowedMinutes = scoringMode === 'peak'
+            ? (parseInt((document.getElementById('w-time-allowed') || {}).value) || 10)
+            : null;
 
         wizardStep = 2;
         renderWizardStep();
@@ -1040,18 +1094,14 @@
             }
         }
 
-        let pointsSummary = '';
-        if (type === 'ffa') {
-            const pts = Object.entries(wizardData.ffaPoints || {}).sort((a,b) => parseInt(a[0])-parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(', ');
-            pointsSummary = `<div class="review-item"><span class="review-label">FFA Points</span><span class="review-value">${escapeHtml(pts || 'None configured')}</span></div>`;
-        } else {
-            pointsSummary = `
-                <div class="review-item"><span class="review-label">Match Win</span><span class="review-value">${wizardData.matchWin}pts</span></div>
-                <div class="review-item"><span class="review-label">1st Place</span><span class="review-value">+${wizardData.place1}pts</span></div>
-                <div class="review-item"><span class="review-label">2nd Place</span><span class="review-value">+${wizardData.place2}pts</span></div>
-                <div class="review-item"><span class="review-label">3rd Place</span><span class="review-value">+${wizardData.place3}pts</span></div>
-            `;
-        }
+        const modeLabels = { halo: 'Halo', peak: 'Peak', simple_score: 'Simple Score' };
+        const ladderPts = Object.entries(wizardData.placementLadder || {}).sort((a,b) => parseInt(a[0])-parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(', ');
+        let pointsSummary = `
+            <div class="review-item"><span class="review-label">Scoring Mode</span><span class="review-value">${modeLabels[wizardData.scoringMode] || wizardData.scoringMode}</span></div>
+            ${ladderPts ? `<div class="review-item"><span class="review-label">Placement Pts</span><span class="review-value">${escapeHtml(ladderPts)}</span></div>` : ''}
+            ${wizardData.timeAllowedMinutes ? `<div class="review-item"><span class="review-label">Time Allowed</span><span class="review-value">${wizardData.timeAllowedMinutes} min</span></div>` : ''}
+            ${type !== 'ffa' ? `<div class="review-item"><span class="review-label">Win Multiplier</span><span class="review-value">${wizardData.useWinMultiplier ? 'Yes' : 'No'}</span></div>` : ''}
+        `;
 
         modal.innerHTML = `
             <div class="modal-title">New Round</div>
@@ -1086,16 +1136,20 @@
                 game_name: wizardData.gameName,
                 type: type,
                 sort_order: wizardData.sortOrder,
-                status: 'active'
+                status: 'active',
+                scoring_mode: wizardData.scoringMode || 'simple_score',
+                placement_ladder: wizardData.placementLadder || {},
+                use_win_multiplier: type !== 'ffa' ? (wizardData.useWinMultiplier || false) : false
             };
 
+            if (wizardData.timeAllowedMinutes) {
+                roundInsert.time_allowed_minutes = wizardData.timeAllowedMinutes;
+            }
+
+            // Keep legacy FFA points for backward compat
             if (type === 'ffa') {
-                roundInsert.ffa_placement_points = wizardData.ffaPoints || {};
+                roundInsert.ffa_placement_points = wizardData.placementLadder || {};
             } else {
-                roundInsert.match_win_points = wizardData.matchWin;
-                roundInsert.placement_1st_points = wizardData.place1;
-                roundInsert.placement_2nd_points = wizardData.place2;
-                roundInsert.placement_3rd_points = wizardData.place3;
                 if (wizardData.teamSize) roundInsert.team_size = wizardData.teamSize;
             }
 
@@ -1226,29 +1280,44 @@
         const roundPlayers = await fetchRoundPlayers(round.id);
         const existingResults = await fetchFfaResults(round.id);
 
-        // Build existing placements map
         const existingMap = {};
-        existingResults.forEach(r => { existingMap[r.player_id] = r.placement; });
+        existingResults.forEach(r => { existingMap[r.player_id] = r; });
 
         const players = roundPlayers.map(rp => rp.player).filter(Boolean);
+        const isHalo = round.scoring_mode === 'halo';
+        const isCompleted = round.status === 'completed';
+
+        const ladder = round.placement_ladder || round.ffa_placement_points || {};
+        const ladderDisplay = Object.entries(ladder)
+            .sort((a,b) => parseInt(a[0]) - parseInt(b[0]))
+            .map(([k,v]) => `#${k}: ${v}pts`).join(' &bull; ');
 
         let rowsHtml = '';
-        players.forEach(p => {
-            const existing = existingMap[p.id] || '';
-            rowsHtml += `
-                <div class="ffa-placement-row">
-                    <span class="ffa-placement-name">${escapeHtml(p.gamertag)}</span>
-                    <input type="number" class="form-input ffa-placement-input" id="place-${p.id}" data-player-id="${p.id}" value="${existing}" min="1" placeholder="—" style="width:80px;">
-                </div>
-            `;
-        });
-
-        const pointsDisplay = Object.entries(round.ffa_placement_points || {})
-            .sort((a,b) => parseInt(a[0]) - parseInt(b[0]))
-            .map(([k,v]) => `#${k}: ${v}pts`)
-            .join(' &bull; ');
-
-        const isCompleted = round.status === 'completed';
+        if (isHalo) {
+            // Halo mode: enter stats, auto-rank by CFS
+            players.forEach(p => {
+                const ex = existingMap[p.id] || {};
+                rowsHtml += `
+                    <div class="ffa-placement-row" style="flex-wrap:wrap;gap:var(--space-sm);">
+                        <span class="ffa-placement-name" style="min-width:120px;">${escapeHtml(p.gamertag)}</span>
+                        <input type="number" class="form-input" id="ffa-score-${p.id}" data-player-id="${p.id}" placeholder="Score" value="${ex.score ?? ''}" min="0" style="width:90px;" title="In-game score">
+                        <input type="number" class="form-input" id="ffa-kills-${p.id}" placeholder="K" value="${ex.kills ?? ''}" min="0" style="width:60px;" title="Kills">
+                        <input type="number" class="form-input" id="ffa-deaths-${p.id}" placeholder="D" value="${ex.deaths ?? ''}" min="0" style="width:60px;" title="Deaths">
+                        <input type="number" class="form-input" id="ffa-assists-${p.id}" placeholder="A" value="${ex.assists ?? ''}" min="0" style="width:60px;" title="Assists">
+                    </div>
+                `;
+            });
+        } else {
+            players.forEach(p => {
+                const ex = existingMap[p.id] || {};
+                rowsHtml += `
+                    <div class="ffa-placement-row">
+                        <span class="ffa-placement-name">${escapeHtml(p.gamertag)}</span>
+                        <input type="number" class="form-input ffa-placement-input" id="place-${p.id}" data-player-id="${p.id}" value="${ex.placement || ''}" min="1" placeholder="—" style="width:80px;">
+                    </div>
+                `;
+            });
+        }
 
         section.innerHTML = `
             <div class="manage-section">
@@ -1256,14 +1325,16 @@
                 <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-bottom:var(--space-md);">
                     ${getTypeBadge(round.type)}
                     ${getStatusBadge(round.status)}
+                    <span style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);">${{ halo:'Halo', peak:'Peak', simple_score:'Simple Score' }[round.scoring_mode] || ''}</span>
                 </div>
-                ${pointsDisplay ? `<p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">Point schedule: ${pointsDisplay}</p>` : ''}
+                ${ladderDisplay ? `<p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">Placement points: ${ladderDisplay}</p>` : ''}
+                ${isHalo ? '<p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">Enter stats. Players will be auto-ranked by CFS (Score × KDA). Points = CFS ÷ 100.</p>' : ''}
 
-                <h3 style="font-family:var(--font-display);font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-secondary);margin-bottom:var(--space-md);">Assign Placements</h3>
+                <h3 style="font-family:var(--font-display);font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-secondary);margin-bottom:var(--space-md);">${isHalo ? 'Enter Stats' : 'Assign Placements'}</h3>
                 <div id="ffa-placement-form">
                     ${rowsHtml || '<div class="empty-state">No players in this round.</div>'}
                 </div>
-                ${!isCompleted && players.length > 0 ? `<button class="btn btn-success" style="margin-top:var(--space-lg);" onclick="saveFfaPlacements()">Save Placements &amp; Complete Round</button>` : ''}
+                ${!isCompleted && players.length > 0 ? `<button class="btn btn-success" style="margin-top:var(--space-lg);" onclick="saveFfaPlacements()">Save &amp; Complete Round</button>` : ''}
                 ${isCompleted ? '<div style="margin-top:var(--space-md);color:var(--neon-green);font-family:var(--font-mono);font-size:0.85rem;">Round completed.</div>' : ''}
             </div>
         `;
@@ -1271,58 +1342,89 @@
 
     async function saveFfaPlacements() {
         const round = managedRound;
-        const inputs = document.querySelectorAll('.ffa-placement-input');
-        const results = [];
-        const usedPlacements = new Set();
+        const isHalo = round.scoring_mode === 'halo';
+        const ladder = round.placement_ladder || round.ffa_placement_points || {};
+        let results = [];
 
-        for (const input of inputs) {
-            const playerId = input.dataset.playerId;
-            const val = input.value.trim();
-            if (!val) continue;
-            const placement = parseInt(val);
-            if (isNaN(placement) || placement < 1) return showToast('Placements must be positive integers', 'error');
-            if (usedPlacements.has(placement)) return showToast(`Duplicate placement #${placement}`, 'error');
-            usedPlacements.add(placement);
+        if (isHalo) {
+            // Collect stats per player
+            const statRows = [];
+            document.querySelectorAll('[id^="ffa-score-"]').forEach(scoreEl => {
+                const playerId = scoreEl.dataset.playerId;
+                const score = parseFloat(scoreEl.value);
+                const kills = parseInt(document.getElementById(`ffa-kills-${playerId}`).value) || 0;
+                const deaths = parseInt(document.getElementById(`ffa-deaths-${playerId}`).value) || 0;
+                const assists = parseInt(document.getElementById(`ffa-assists-${playerId}`).value) || 0;
+                if (isNaN(score)) return; // skip empty rows
+                const { kda, cfs, points } = calculateHaloPoints(score, kills, deaths, assists, 1.0);
+                statRows.push({ player_id: playerId, score, kills, deaths, assists, kda, cfs, points });
+            });
 
-            const pts = (round.ffa_placement_points || {})[String(placement)] || 0;
-            results.push({ player_id: playerId, placement, points_awarded: pts });
+            if (statRows.length === 0) return showToast('Enter stats for at least one player', 'error');
+
+            // Auto-rank by CFS descending
+            statRows.sort((a, b) => b.cfs - a.cfs);
+            statRows.forEach((r, i) => {
+                r.placement = i + 1;
+                r.points_awarded = r.points;
+            });
+            results = statRows;
+        } else {
+            // Manual placement entry
+            const inputs = document.querySelectorAll('.ffa-placement-input');
+            const usedPlacements = new Set();
+            for (const input of inputs) {
+                const playerId = input.dataset.playerId;
+                const val = input.value.trim();
+                if (!val) continue;
+                const placement = parseInt(val);
+                if (isNaN(placement) || placement < 1) return showToast('Placements must be positive integers', 'error');
+                if (usedPlacements.has(placement)) return showToast(`Duplicate placement #${placement}`, 'error');
+                usedPlacements.add(placement);
+                const pts = parseFloat(ladder[String(placement)] || 0);
+                results.push({ player_id: playerId, placement, points_awarded: pts });
+            }
+            if (results.length === 0) return showToast('Enter at least one placement', 'error');
         }
 
-        if (results.length === 0) return showToast('Enter at least one placement', 'error');
-
         try {
-            // Upsert ffa_results
-            const ffaInserts = results.map(r => ({
-                round_id: round.id,
-                player_id: r.player_id,
-                placement: r.placement,
-                points_awarded: r.points_awarded
-            }));
+            // Build ffa_results inserts
+            const ffaInserts = results.map(r => {
+                const row = {
+                    round_id: round.id,
+                    player_id: r.player_id,
+                    placement: r.placement,
+                    points_awarded: parseFloat(r.points_awarded.toFixed(4))
+                };
+                if (isHalo) {
+                    row.score = r.score;
+                    row.kills = r.kills;
+                    row.deaths = r.deaths;
+                    row.assists = r.assists;
+                    row.kda = parseFloat(r.kda.toFixed(4));
+                    row.cfs = parseFloat(r.cfs.toFixed(4));
+                }
+                return row;
+            });
 
-            // Delete existing first (upsert with conflict)
             await supabaseClient.from('ffa_results').delete().eq('round_id', round.id);
             const { error: frErr } = await supabaseClient.from('ffa_results').insert(ffaInserts);
             if (frErr) throw frErr;
 
-            // Upsert player_points
             await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'ffa_placement');
             const ppInserts = results.map(r => ({
                 round_id: round.id,
                 player_id: r.player_id,
-                points: r.points_awarded,
+                points: parseFloat(r.points_awarded.toFixed(4)),
                 source: 'ffa_placement'
             }));
             const { error: ppErr } = await supabaseClient.from('player_points').insert(ppInserts);
             if (ppErr) throw ppErr;
 
-            // Mark round completed
-            const { error: rErr } = await supabaseClient
-                .from('rounds')
-                .update({ status: 'completed' })
-                .eq('id', round.id);
+            const { error: rErr } = await supabaseClient.from('rounds').update({ status: 'completed' }).eq('id', round.id);
             if (rErr) throw rErr;
 
-            showToast('Placements saved & round completed!');
+            showToast('Results saved & round completed!');
             allRounds = await fetchRounds();
             managedRound = allRounds.find(r => r.id === round.id);
             renderRoundsList();
@@ -1361,6 +1463,8 @@
                 </div>
                 <p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">
                     ${!isRoundCompleted ? 'Click a highlighted match to record results.' : 'Round completed.'}
+                    &bull; Mode: ${{ halo:'Halo', peak:'Peak', simple_score:'Simple Score' }[round.scoring_mode] || 'Simple Score'}
+                    ${round.use_win_multiplier ? '&bull; Win multiplier active' : ''}
                 </p>
                 <div class="bracket-admin-container" id="admin-bracket-render"></div>
                 ${allFinalComplete && !isRoundCompleted ? `<button class="btn btn-success" style="margin-top:var(--space-md);" onclick="completeRound()">Complete Round &amp; Award Placement Bonuses</button>` : ''}
@@ -1393,12 +1497,104 @@
 
         const p1Name = getName(match.participant_1_type, match.participant_1_id);
         const p2Name = getName(match.participant_2_type, match.participant_2_id);
+        const round = managedRound;
+        const mode = round.scoring_mode || 'simple_score';
+
+        // For team brackets, we also need player lists per team for Halo mode
+        const p1Team = match.participant_1_type === 'team'
+            ? managedRoundTeams.find(rt => rt.team && rt.team.id === match.participant_1_id)
+            : null;
+        const p2Team = match.participant_2_type === 'team'
+            ? managedRoundTeams.find(rt => rt.team && rt.team.id === match.participant_2_id)
+            : null;
+        const p1Players = p1Team ? (p1Team.team.team_players || []).map(tp => tp.player).filter(Boolean)
+            : (match.participant_1_type === 'player' ? [players.find(p => p.id === match.participant_1_id)].filter(Boolean) : []);
+        const p2Players = p2Team ? (p2Team.team.team_players || []).map(tp => tp.player).filter(Boolean)
+            : (match.participant_2_type === 'player' ? [players.find(p => p.id === match.participant_2_id)].filter(Boolean) : []);
+
+        // Determine max bracket round for multiplier
+        const maxBracketRound = managedMatches.reduce((mx, m) => Math.max(mx, m.bracket_round), 0);
+
+        let statsHtml = '';
+        if (mode === 'halo') {
+            function playerStatRows(pName, pList, prefix) {
+                if (pList.length === 0) return `<div class="form-group"><label class="form-label">${escapeHtml(pName)} — Score</label><input type="number" id="${prefix}-score-solo" class="form-input" placeholder="Score" min="0"><div style="display:flex;gap:var(--space-sm);margin-top:var(--space-sm);"><input type="number" id="${prefix}-kills-solo" class="form-input" placeholder="K" style="flex:1;" min="0"><input type="number" id="${prefix}-deaths-solo" class="form-input" placeholder="D" style="flex:1;" min="0"><input type="number" id="${prefix}-assists-solo" class="form-input" placeholder="A" style="flex:1;" min="0"></div></div>`;
+                return pList.map(p => `
+                    <div class="form-group">
+                        <label class="form-label" style="color:var(--text-secondary);">${escapeHtml(p.gamertag)}</label>
+                        <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
+                            <input type="number" id="${prefix}-score-${p.id}" data-player="${p.id}" class="form-input halo-score-input" placeholder="Score" min="0" style="flex:2;min-width:80px;">
+                            <input type="number" id="${prefix}-kills-${p.id}" class="form-input" placeholder="K" min="0" style="flex:1;min-width:50px;">
+                            <input type="number" id="${prefix}-deaths-${p.id}" class="form-input" placeholder="D" min="0" style="flex:1;min-width:50px;">
+                            <input type="number" id="${prefix}-assists-${p.id}" class="form-input" placeholder="A" min="0" style="flex:1;min-width:50px;">
+                        </div>
+                    </div>
+                `).join('');
+            }
+            statsHtml = `
+                <div style="display:flex;gap:var(--space-lg);flex-wrap:wrap;">
+                    <div style="flex:1;min-width:200px;">
+                        <div class="form-label" style="margin-bottom:var(--space-sm);color:var(--neon-cyan);">${escapeHtml(p1Name)}</div>
+                        ${playerStatRows(p1Name, p1Players, 'p1')}
+                    </div>
+                    <div style="flex:1;min-width:200px;">
+                        <div class="form-label" style="margin-bottom:var(--space-sm);color:var(--neon-cyan);">${escapeHtml(p2Name)}</div>
+                        ${playerStatRows(p2Name, p2Players, 'p2')}
+                    </div>
+                </div>
+                <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Winner is determined by total team CFS. Points = CFS ÷ 100${round.use_win_multiplier ? ' × round multiplier' : ''}.</p>
+            `;
+        } else if (mode === 'peak') {
+            const timeAllowed = (round.time_allowed_minutes || 10) * 60;
+            statsHtml = `
+                <div style="display:flex;gap:var(--space-lg);flex-wrap:wrap;">
+                    <div style="flex:1;">
+                        <div class="form-label" style="color:var(--neon-cyan);">${escapeHtml(p1Name)}</div>
+                        <label class="form-label" style="margin-top:var(--space-sm);">
+                            <input type="checkbox" id="p1-completed" onchange="togglePeakCompletion('p1')"> Completed
+                        </label>
+                        <div id="p1-time-div" style="display:none;margin-top:var(--space-sm);">
+                            <input type="number" id="p1-time" class="form-input" placeholder="Time taken (seconds)" min="0" max="${timeAllowed}">
+                        </div>
+                        <div id="p1-dist-div" style="margin-top:var(--space-sm);">
+                            <input type="number" id="p1-dist" class="form-input" placeholder="Distance covered" min="0" step="0.01">
+                        </div>
+                    </div>
+                    <div style="flex:1;">
+                        <div class="form-label" style="color:var(--neon-cyan);">${escapeHtml(p2Name)}</div>
+                        <label class="form-label" style="margin-top:var(--space-sm);">
+                            <input type="checkbox" id="p2-completed" onchange="togglePeakCompletion('p2')"> Completed
+                        </label>
+                        <div id="p2-time-div" style="display:none;margin-top:var(--space-sm);">
+                            <input type="number" id="p2-time" class="form-input" placeholder="Time taken (seconds)" min="0" max="${timeAllowed}">
+                        </div>
+                        <div id="p2-dist-div" style="margin-top:var(--space-sm);">
+                            <input type="number" id="p2-dist" class="form-input" placeholder="Distance covered" min="0" step="0.01">
+                        </div>
+                    </div>
+                </div>
+                <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Time allowed: ${round.time_allowed_minutes} min. Winner = faster completion, or further distance if both DNF.</p>
+            `;
+        } else {
+            // Simple Score: just winner radio + optional display scores
+            statsHtml = `
+                <div style="display:flex;gap:var(--space-md);">
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label">${escapeHtml(p1Name)} Score</label>
+                        <input type="text" id="score-1" class="form-input" placeholder="Optional">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label">${escapeHtml(p2Name)} Score</label>
+                        <input type="text" id="score-2" class="form-input" placeholder="Optional">
+                    </div>
+                </div>
+            `;
+        }
 
         const modal = document.getElementById('match-modal-content');
         modal.innerHTML = `
             <div class="modal-title">Record Match Result</div>
-            <div style="margin-bottom:var(--space-lg);">
-                <div class="form-label">Participants</div>
+            <div style="margin-bottom:var(--space-md);">
                 <div style="display:flex;align-items:center;gap:var(--space-md);margin-top:var(--space-sm);">
                     <span style="font-family:var(--font-mono);font-size:1rem;color:var(--text-primary);flex:1;text-align:center;">${escapeHtml(p1Name)}</span>
                     <span style="font-family:var(--font-display);font-size:0.7rem;color:var(--neon-yellow);">VS</span>
@@ -1406,37 +1602,33 @@
                 </div>
             </div>
 
+            ${statsHtml}
+
+            ${mode !== 'halo' && mode !== 'peak' ? `
             <div class="form-group">
                 <label class="form-label">Winner</label>
                 <div class="radio-group">
                     <label class="radio-item">
-                        <input type="radio" name="match-winner" value="${match.participant_1_id}" id="win-p1">
-                        ${escapeHtml(p1Name)}
+                        <input type="radio" name="match-winner" value="${match.participant_1_id}" id="win-p1"> ${escapeHtml(p1Name)}
                     </label>
                     <label class="radio-item">
-                        <input type="radio" name="match-winner" value="${match.participant_2_id}" id="win-p2">
-                        ${escapeHtml(p2Name)}
+                        <input type="radio" name="match-winner" value="${match.participant_2_id}" id="win-p2"> ${escapeHtml(p2Name)}
                     </label>
                 </div>
-            </div>
-
-            <div style="display:flex;gap:var(--space-md);">
-                <div class="form-group" style="flex:1;">
-                    <label class="form-label">${escapeHtml(p1Name)} Score</label>
-                    <input type="text" id="score-1" class="form-input" placeholder="Optional">
-                </div>
-                <div class="form-group" style="flex:1;">
-                    <label class="form-label">${escapeHtml(p2Name)} Score</label>
-                    <input type="text" id="score-2" class="form-input" placeholder="Optional">
-                </div>
-            </div>
+            </div>` : ''}
 
             <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-md);">
                 <button class="btn btn-sm" onclick="closeMatchModal()">Cancel</button>
-                <button class="btn btn-success btn-sm" onclick="recordMatchResult('${match.id}')">Record Result</button>
+                <button class="btn btn-success btn-sm" onclick="recordMatchResult('${match.id}', '${match.participant_1_id}', '${match.participant_2_id}', ${JSON.stringify(p1Players.map(p=>p.id))}, ${JSON.stringify(p2Players.map(p=>p.id))}, ${maxBracketRound})">Record Result</button>
             </div>
         `;
         document.getElementById('match-modal-overlay').classList.add('show');
+    }
+
+    function togglePeakCompletion(prefix) {
+        const cb = document.getElementById(`${prefix}-completed`);
+        document.getElementById(`${prefix}-time-div`).style.display = cb.checked ? 'block' : 'none';
+        document.getElementById(`${prefix}-dist-div`).style.display = cb.checked ? 'none' : 'block';
     }
 
     function closeMatchModalOverlay(e) {
@@ -1446,18 +1638,97 @@
         document.getElementById('match-modal-overlay').classList.remove('show');
     }
 
-    async function recordMatchResult(matchId) {
-        const winnerRadio = document.querySelector('input[name="match-winner"]:checked');
-        if (!winnerRadio) return showToast('Select a winner', 'error');
-        const winnerId = winnerRadio.value;
-        const score1 = document.getElementById('score-1').value.trim() || null;
-        const score2 = document.getElementById('score-2').value.trim() || null;
+    async function recordMatchResult(matchId, p1Id, p2Id, p1PlayerIds, p2PlayerIds, maxBracketRound) {
+        const match = managedMatches.find(m => m.id === matchId);
+        if (!match) return showToast('Match not found', 'error');
+        const round = managedRound;
+        const mode = round.scoring_mode || 'simple_score';
+        const useWinMult = round.use_win_multiplier;
+        const mult = useWinMult ? getWinMultiplier(match.bracket_round, maxBracketRound) : 1.0;
+
+        let winnerId = null;
+        let score1 = null, score2 = null;
+        let statsToInsert = []; // match_player_stats rows
 
         try {
-            const match = managedMatches.find(m => m.id === matchId);
-            if (!match) throw new Error('Match not found');
+            if (mode === 'halo') {
+                // Collect stats for each player on each side, sum CFS per side to determine winner
+                function collectHaloStats(playerIds, prefix) {
+                    return playerIds.map(pid => {
+                        const scoreEl = document.getElementById(`${prefix}-score-${pid}`) || document.getElementById(`${prefix}-score-solo`);
+                        const killsEl = document.getElementById(`${prefix}-kills-${pid}`) || document.getElementById(`${prefix}-kills-solo`);
+                        const deathsEl = document.getElementById(`${prefix}-deaths-${pid}`) || document.getElementById(`${prefix}-deaths-solo`);
+                        const assistsEl = document.getElementById(`${prefix}-assists-${pid}`) || document.getElementById(`${prefix}-assists-solo`);
+                        const s = parseFloat(scoreEl ? scoreEl.value : 0) || 0;
+                        const k = parseInt(killsEl ? killsEl.value : 0) || 0;
+                        const d = parseInt(deathsEl ? deathsEl.value : 0) || 0;
+                        const a = parseInt(assistsEl ? assistsEl.value : 0) || 0;
+                        const { kda, cfs, points } = calculateHaloPoints(s, k, d, a, mult);
+                        return { player_id: pid, match_id: matchId, score: s, kills: k, deaths: d, assists: a, kda, cfs, points_awarded: points };
+                    });
+                }
 
-            const round = managedRound;
+                // For solo: player IS the participant
+                const p1Stats = p1PlayerIds.length > 0 ? collectHaloStats(p1PlayerIds, 'p1') : [];
+                const p2Stats = p2PlayerIds.length > 0 ? collectHaloStats(p2PlayerIds, 'p2') : [];
+
+                const p1Cfs = p1Stats.reduce((s, r) => s + r.cfs, 0);
+                const p2Cfs = p2Stats.reduce((s, r) => s + r.cfs, 0);
+                if (p1Stats.length === 0 && p2Stats.length === 0) return showToast('Enter stats for at least one side', 'error');
+
+                winnerId = p1Cfs >= p2Cfs ? p1Id : p2Id;
+                score1 = p1Cfs.toFixed(2);
+                score2 = p2Cfs.toFixed(2);
+                statsToInsert = [...p1Stats, ...p2Stats];
+
+            } else if (mode === 'peak') {
+                const p1Complete = document.getElementById('p1-completed').checked;
+                const p2Complete = document.getElementById('p2-completed').checked;
+                const timeAllowedSec = (round.time_allowed_minutes || 10) * 60;
+
+                let p1Points = 0, p2Points = 0;
+                let p1TimeSec = null, p2TimeSec = null;
+                let p1Dist = null, p2Dist = null;
+
+                if (p1Complete) {
+                    p1TimeSec = parseInt(document.getElementById('p1-time').value) || 0;
+                    const { points } = calculatePeakCompletion(timeAllowedSec, p1TimeSec, mult);
+                    p1Points = points;
+                } else {
+                    p1Dist = parseFloat(document.getElementById('p1-dist').value) || 0;
+                }
+                if (p2Complete) {
+                    p2TimeSec = parseInt(document.getElementById('p2-time').value) || 0;
+                    const { points } = calculatePeakCompletion(timeAllowedSec, p2TimeSec, mult);
+                    p2Points = points;
+                } else {
+                    p2Dist = parseFloat(document.getElementById('p2-dist').value) || 0;
+                }
+
+                // Determine winner: completion beats DNF; faster time wins; further distance wins
+                if (p1Complete && !p2Complete) winnerId = p1Id;
+                else if (p2Complete && !p1Complete) winnerId = p2Id;
+                else if (p1Complete && p2Complete) winnerId = p1TimeSec <= p2TimeSec ? p1Id : p2Id;
+                else winnerId = (p1Dist || 0) >= (p2Dist || 0) ? p1Id : p2Id;
+
+                score1 = p1Complete ? `${p1TimeSec}s` : `${p1Dist}m`;
+                score2 = p2Complete ? `${p2TimeSec}s` : `${p2Dist}m`;
+
+                // Award per-player stats (use team player IDs if available)
+                const allP1 = p1PlayerIds.length > 0 ? p1PlayerIds : [p1Id];
+                const allP2 = p2PlayerIds.length > 0 ? p2PlayerIds : [p2Id];
+                // For Peak, only award computed points; stat columns: time or distance
+                // We'll store stats separately after match update
+
+            } else {
+                // Simple Score: manual winner radio
+                const winnerRadio = document.querySelector('input[name="match-winner"]:checked');
+                if (!winnerRadio) return showToast('Select a winner', 'error');
+                winnerId = winnerRadio.value;
+                score1 = (document.getElementById('score-1') || {}).value?.trim() || null;
+                score2 = (document.getElementById('score-2') || {}).value?.trim() || null;
+                // Simple Score points awarded at completeRound(), not per match
+            }
 
             // 1. Update bracket_match
             const { error: updateErr } = await supabaseClient
@@ -1466,16 +1737,53 @@
                 .eq('id', matchId);
             if (updateErr) throw updateErr;
 
-            // 2. Award match_win_points to winner
-            await awardMatchWinPoints(winnerId, match.participant_1_type, round);
+            // 2. Insert match_player_stats for Halo
+            if (mode === 'halo' && statsToInsert.length > 0) {
+                await supabaseClient.from('match_player_stats').delete().eq('match_id', matchId);
+                const { error: statsErr } = await supabaseClient.from('match_player_stats').insert(statsToInsert);
+                if (statsErr) console.warn('Stats insert error:', statsErr);
 
-            // 3. Advance winner to next match
+                // Award points to players
+                await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'match_halo').in('player_id', statsToInsert.map(s => s.player_id));
+                const ppInserts = statsToInsert.map(s => ({
+                    round_id: round.id,
+                    player_id: s.player_id,
+                    points: parseFloat(s.points_awarded.toFixed(4)),
+                    source: 'match_halo'
+                }));
+                const { error: ppErr } = await supabaseClient.from('player_points').insert(ppInserts);
+                if (ppErr) throw ppErr;
+            }
+
+            // 3. For Peak: award points to winner's players
+            if (mode === 'peak') {
+                const winnerPIds = winnerId === p1Id
+                    ? (p1PlayerIds.length > 0 ? p1PlayerIds : [p1Id])
+                    : (p2PlayerIds.length > 0 ? p2PlayerIds : [p2Id]);
+                const winnerTime = winnerId === p1Id
+                    ? (document.getElementById('p1-completed').checked ? parseInt(document.getElementById('p1-time').value) || 0 : null)
+                    : (document.getElementById('p2-completed').checked ? parseInt(document.getElementById('p2-time').value) || 0 : null);
+                const timeAllowedSec = (round.time_allowed_minutes || 10) * 60;
+                let peakPts = 0;
+                if (winnerTime !== null) {
+                    const { points } = calculatePeakCompletion(timeAllowedSec, winnerTime, mult);
+                    peakPts = points;
+                }
+                if (peakPts > 0) {
+                    await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'match_peak').in('player_id', winnerPIds);
+                    const ppInserts = winnerPIds.map(pid => ({
+                        round_id: round.id, player_id: pid, points: parseFloat(peakPts.toFixed(4)), source: 'match_peak'
+                    }));
+                    const { error: ppErr } = await supabaseClient.from('player_points').insert(ppInserts);
+                    if (ppErr) throw ppErr;
+                }
+            }
+
+            // 4. Advance winner
             await advanceWinner(match, winnerId, round.type);
 
             closeMatchModal();
             showToast('Result recorded!');
-
-            // Re-render
             await renderBracketManage(document.getElementById('manage-round-section'));
         } catch (err) {
             showToast(err.message, 'error');
@@ -1484,32 +1792,10 @@
     }
 
     async function awardMatchWinPoints(winnerId, participantType, round) {
-        // If team bracket: award to all players on the team
-        if (participantType === 'team' || round.type === 'team_bracket') {
-            // Find team players
-            const teamData = managedRoundTeams.find(rt => rt.team && rt.team.id === winnerId);
-            if (teamData && teamData.team && teamData.team.team_players) {
-                const ppInserts = teamData.team.team_players.map(tp => ({
-                    round_id: round.id,
-                    player_id: tp.player_id,
-                    points: round.match_win_points,
-                    source: 'match_win'
-                }));
-                if (ppInserts.length > 0) {
-                    const { error } = await supabaseClient.from('player_points').insert(ppInserts);
-                    if (error) throw error;
-                }
-            }
-        } else {
-            // Solo: award directly to player
-            const { error } = await supabaseClient.from('player_points').insert({
-                round_id: round.id,
-                player_id: winnerId,
-                points: round.match_win_points,
-                source: 'match_win'
-            });
-            if (error) throw error;
-        }
+        // Simple Score: no per-match points, awarded at round completion
+        // Halo/Peak: handled in recordMatchResult directly
+        // This function is kept for bye auto-advancement (which awards no points)
+        // Nothing to do here anymore — points are mode-specific
     }
 
     // After bracket creation, push all bye-winners forward into subsequent round slots.
@@ -1656,45 +1942,51 @@
 
     async function completeRound() {
         const round = managedRound;
-        if (!confirm(`Complete round "${round.name}" and award placement bonuses?`)) return;
+        const mode = round.scoring_mode || 'simple_score';
+        if (!confirm(`Complete round "${round.name}"?`)) return;
 
         try {
-            // Determine final bracket round
             const maxRound = managedMatches.reduce((max, m) => Math.max(max, m.bracket_round), 0);
-            const finalMatches = managedMatches.filter(m => m.bracket_round === maxRound);
-            const finalMatch = finalMatches[0];
-
-            if (!finalMatch || !finalMatch.winner_id) {
-                return showToast('Final match not completed yet', 'error');
-            }
-
-            const winnerId = finalMatch.winner_id; // 1st place
-            const loserId = winnerId === finalMatch.participant_1_id
-                ? finalMatch.participant_2_id
-                : finalMatch.participant_1_id; // 2nd place
-
-            // 3rd place: losers of semi-finals
-            const semiMatches = managedMatches.filter(m => m.bracket_round === maxRound - 1);
-            const thirdPlaceIds = [];
-            semiMatches.forEach(m => {
-                if (m.status === 'completed' && m.winner_id) {
-                    const loser = m.winner_id === m.participant_1_id ? m.participant_2_id : m.participant_1_id;
-                    if (loser) thirdPlaceIds.push(loser);
-                }
-            });
+            const finalMatch = managedMatches.find(m => m.bracket_round === maxRound);
+            if (!finalMatch || !finalMatch.winner_id) return showToast('Final match not completed yet', 'error');
 
             const pType = round.type === 'team_bracket' ? 'team' : 'player';
+            const ladder = round.placement_ladder || {};
 
-            async function awardPlacementBonus(participantId, points, label) {
-                if (!participantId || points <= 0) return;
+            // Build placement map: participant_id -> placement number
+            // 1st = final winner, 2nd = final loser
+            // 3rd = semi losers (if maxRound >= 2)
+            // Remaining placements from earlier rounds (quarterfinals losers = 5th, etc.)
+            const placements = {}; // participantId -> placement
+
+            const finalWinnerId = finalMatch.winner_id;
+            const finalLoserId = finalWinnerId === finalMatch.participant_1_id
+                ? finalMatch.participant_2_id : finalMatch.participant_1_id;
+
+            placements[finalWinnerId] = 1;
+            if (finalLoserId) placements[finalLoserId] = 2;
+
+            // Walk bracket rounds in reverse to assign placements
+            let currentPlacement = 3;
+            for (let r = maxRound - 1; r >= 1; r--) {
+                const roundMatches = managedMatches.filter(m => m.bracket_round === r && m.status === 'completed');
+                roundMatches.forEach(m => {
+                    const loser = m.winner_id === m.participant_1_id ? m.participant_2_id : m.participant_1_id;
+                    if (loser && !placements[loser]) {
+                        placements[loser] = currentPlacement;
+                    }
+                });
+                currentPlacement += roundMatches.length;
+            }
+
+            async function awardPlacement(participantId, placement) {
+                const pts = parseFloat(ladder[String(placement)] || 0);
+                if (!participantId || pts <= 0) return;
                 if (pType === 'team') {
                     const teamData = managedRoundTeams.find(rt => rt.team && rt.team.id === participantId);
-                    if (teamData && teamData.team && teamData.team.team_players) {
+                    if (teamData?.team?.team_players) {
                         const ppInserts = teamData.team.team_players.map(tp => ({
-                            round_id: round.id,
-                            player_id: tp.player_id,
-                            points: points,
-                            source: 'placement_bonus'
+                            round_id: round.id, player_id: tp.player_id, points: pts, source: 'placement_bonus'
                         }));
                         if (ppInserts.length > 0) {
                             const { error } = await supabaseClient.from('player_points').insert(ppInserts);
@@ -1703,29 +1995,24 @@
                     }
                 } else {
                     const { error } = await supabaseClient.from('player_points').insert({
-                        round_id: round.id,
-                        player_id: participantId,
-                        points: points,
-                        source: 'placement_bonus'
+                        round_id: round.id, player_id: participantId, points: pts, source: 'placement_bonus'
                     });
                     if (error) throw error;
                 }
             }
 
-            await awardPlacementBonus(winnerId, round.placement_1st_points, '1st');
-            await awardPlacementBonus(loserId, round.placement_2nd_points, '2nd');
-            for (const tpId of thirdPlaceIds) {
-                await awardPlacementBonus(tpId, round.placement_3rd_points, '3rd');
+            // For Simple Score: award placement points to all (no per-match points)
+            // For Halo/Peak: per-match points already awarded; still award placement bonus from ladder if configured
+            await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'placement_bonus');
+
+            for (const [participantId, placement] of Object.entries(placements)) {
+                await awardPlacement(participantId, placement);
             }
 
-            // Mark round completed
-            const { error: rErr } = await supabaseClient
-                .from('rounds')
-                .update({ status: 'completed' })
-                .eq('id', round.id);
+            const { error: rErr } = await supabaseClient.from('rounds').update({ status: 'completed' }).eq('id', round.id);
             if (rErr) throw rErr;
 
-            showToast('Round completed! Placement bonuses awarded.');
+            showToast('Round completed! Points awarded.');
             allRounds = await fetchRounds();
             managedRound = allRounds.find(r => r.id === round.id);
             renderRoundsList();

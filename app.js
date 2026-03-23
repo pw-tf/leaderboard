@@ -59,7 +59,8 @@ function renderGamertag(gamertag, realName) {
 }
 
 function renderPoints(pts) {
-    return `<span class="points">${pts}</span>`;
+    const val = pts == null ? '0.00' : parseFloat(pts).toFixed(2);
+    return `<span class="points">${val}</span>`;
 }
 
 // ============================================
@@ -182,6 +183,76 @@ async function fetchPlayerPoints(roundId) {
         .eq('round_id', roundId);
     if (error) throw error;
     return data;
+}
+
+async function fetchMatchPlayerStats(matchId) {
+    const { data, error } = await supabaseClient
+        .from('match_player_stats')
+        .select('*, player:players(*)')
+        .eq('match_id', matchId);
+    if (error) throw error;
+    return data;
+}
+
+async function fetchPlayerPointsDetail(playerId) {
+    const { data, error } = await supabaseClient
+        .from('player_points_detail')
+        .select('*')
+        .eq('player_id', playerId)
+        .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+}
+
+// ============================================
+// SCORING CALCULATIONS
+// ============================================
+
+/**
+ * Get win multiplier for a bracket match.
+ * bracket_round: the match's round number (1-indexed).
+ * maxRound: highest bracket_round in the tournament.
+ */
+function getWinMultiplier(bracketRound, maxRound) {
+    if (bracketRound === maxRound) return 1.75;    // Final
+    if (bracketRound === maxRound - 1) return 1.50; // Semis
+    return 1.25;                                    // Prelim
+}
+
+/**
+ * Calculate Halo CFS and points for a participant.
+ * score: in-game score, kills, deaths, assists: integers.
+ * winMultiplier: 1.0 if not used, or tier multiplier.
+ * Returns { kda, cfs, points }.
+ */
+function calculateHaloPoints(score, kills, deaths, assists, winMultiplier) {
+    const kda = (kills + assists) / Math.max(deaths, 1);
+    const cfs = score * kda * winMultiplier;
+    const points = cfs / 100;
+    return { kda, cfs, points };
+}
+
+/**
+ * Calculate Peak points for a participant who completed (passed).
+ * timeAllowedSeconds, timeTakenSeconds: integers.
+ * winMultiplier: tier multiplier.
+ * Returns { cfs, points }.
+ */
+function calculatePeakCompletion(timeAllowedSeconds, timeTakenSeconds, winMultiplier) {
+    const base = timeAllowedSeconds - timeTakenSeconds;
+    const cfs = base * winMultiplier;
+    const points = cfs / 100;
+    return { cfs, points };
+}
+
+/**
+ * Calculate Simple Score points from placement ladder.
+ * placement: integer (1-indexed).
+ * ladder: object like {"1": 10, "2": 7, "3": 5}.
+ * Returns points (number).
+ */
+function calculateSimpleScore(placement, ladder) {
+    return parseFloat((ladder || {})[String(placement)] || 0);
 }
 
 // ============================================
