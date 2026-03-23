@@ -5,6 +5,304 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NEXUS ARENA // Admin</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .badge {
+            font-family: var(--font-display);
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid;
+            white-space: nowrap;
+            display: inline-block;
+        }
+        .badge-ffa { color: var(--neon-yellow); border-color: var(--neon-yellow); background: rgba(255,225,0,0.06); }
+        .badge-solo { color: var(--neon-purple); border-color: var(--neon-purple); background: rgba(176,38,255,0.06); }
+        .badge-team { color: var(--neon-magenta); border-color: var(--neon-magenta); background: rgba(255,45,149,0.06); }
+        .badge-active { color: var(--neon-green); border-color: var(--neon-green); background: rgba(57,255,20,0.06); animation: pulse-active 2s ease-in-out infinite; }
+        .badge-completed { color: var(--text-dim); border-color: var(--border-dim); }
+        @keyframes pulse-active { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        /* Modal steps */
+        .modal-step { display: none; }
+        .modal-step.active { display: block; }
+        .modal-step-header {
+            font-family: var(--font-display);
+            font-size: 0.6rem;
+            color: var(--text-dim);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: var(--space-xs);
+        }
+        .modal-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-sm);
+            margin-top: var(--space-xl);
+        }
+
+        /* Collapsible */
+        .collapsible-header {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-family: var(--font-display);
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: var(--space-sm);
+            user-select: none;
+        }
+        .collapsible-header .chevron {
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        .collapsible-header.collapsed .chevron {
+            transform: rotate(-90deg);
+        }
+        .collapsible-body.hidden { display: none; }
+
+        /* Player selection checkboxes */
+        .player-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: var(--space-sm);
+            margin: var(--space-sm) 0;
+        }
+        .player-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .player-checkbox-item:hover {
+            border-color: var(--border-glow);
+        }
+        .player-checkbox-item input[type="checkbox"] {
+            accent-color: var(--neon-cyan);
+            width: 14px;
+            height: 14px;
+        }
+        .player-checkbox-item.checked {
+            border-color: var(--neon-cyan);
+            background: rgba(0,240,255,0.05);
+        }
+        .player-checkbox-label {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .player-checkbox-item.checked .player-checkbox-label {
+            color: var(--neon-cyan);
+        }
+
+        /* Team checkbox grid */
+        .team-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: var(--space-sm);
+            margin: var(--space-sm) 0;
+        }
+        .team-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .team-checkbox-item.checked {
+            border-color: var(--neon-magenta);
+            background: rgba(255,45,149,0.05);
+        }
+        .team-checkbox-item input[type="checkbox"] {
+            accent-color: var(--neon-magenta);
+        }
+
+        /* Team preview */
+        .teams-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: var(--space-md);
+            margin-top: var(--space-md);
+        }
+        .team-preview-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+        }
+        .team-preview-label {
+            font-family: var(--font-display);
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--neon-magenta);
+            margin-bottom: var(--space-sm);
+        }
+        .team-preview-player {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-dim);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .team-preview-player:last-child { border-bottom: none; }
+        .move-player-btn {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            background: var(--bg-deep);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 2px 6px;
+            transition: all 0.2s;
+        }
+        .move-player-btn:hover {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+        }
+
+        /* Round management */
+        .manage-section {
+            background: var(--bg-panel);
+            border: 1px solid var(--neon-purple);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            margin-top: var(--space-lg);
+        }
+        .manage-section-title {
+            font-family: var(--font-display);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--neon-purple);
+            text-shadow: var(--glow-purple);
+            margin-bottom: var(--space-lg);
+        }
+
+        /* FFA placement form */
+        .ffa-placement-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--border-dim);
+        }
+        .ffa-placement-row:last-child { border-bottom: none; }
+        .ffa-placement-name {
+            flex: 1;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+        .ffa-placement-input {
+            width: 80px;
+        }
+
+        /* Bracket container */
+        .bracket-admin-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        /* Review summary */
+        .review-item {
+            display: flex;
+            gap: var(--space-md);
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid var(--border-dim);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+        .review-item:last-child { border-bottom: none; }
+        .review-label { color: var(--text-dim); min-width: 120px; }
+        .review-value { color: var(--text-primary); }
+
+        /* Inline radio */
+        .radio-group {
+            display: flex;
+            gap: var(--space-lg);
+            margin: var(--space-sm) 0;
+        }
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .radio-item input[type="radio"] {
+            accent-color: var(--neon-cyan);
+        }
+
+        .section-count {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-bottom: var(--space-sm);
+        }
+
+        .btn-warning {
+            border-color: var(--neon-yellow);
+            color: var(--neon-yellow);
+        }
+        .btn-warning:hover {
+            background: rgba(255,225,0,0.1);
+            box-shadow: 0 0 10px rgba(255,225,0,0.3);
+        }
+        .btn-purple {
+            border-color: var(--neon-purple);
+            color: var(--neon-purple);
+        }
+        .btn-purple:hover {
+            background: rgba(176,38,255,0.1);
+            box-shadow: var(--glow-purple);
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            background: var(--bg-deep);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            outline: none;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.3s;
+        }
+        .form-textarea:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: var(--glow-cyan);
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -13,8 +311,7 @@
             <p class="site-subtitle">// Admin Terminal //</p>
             <nav class="nav-bar">
                 <a href="index.html" class="nav-link">Standings</a>
-                <a href="games.html" class="nav-link">Games</a>
-                <a href="schedule.html" class="nav-link">Schedule</a>
+                <a href="rounds.html" class="nav-link">Rounds</a>
                 <a href="admin.html" class="nav-link">Admin</a>
             </nav>
         </header>
@@ -38,20 +335,16 @@
             </div>
         </div>
 
-        <!-- ADMIN PANEL (hidden until login) -->
+        <!-- ADMIN PANEL -->
         <div id="admin-panel" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
                 <h2 class="section-header" style="margin-bottom:0; border:none; padding:0;">Admin <span class="accent">Panel</span></h2>
                 <button class="btn btn-danger btn-sm" onclick="handleLogout()">Logout</button>
             </div>
 
-            <!-- TABS -->
             <div class="admin-tabs">
                 <button class="admin-tab active" onclick="switchTab(this, 'players')">Players</button>
-                <button class="admin-tab" onclick="switchTab(this, 'games')">Games</button>
                 <button class="admin-tab" onclick="switchTab(this, 'rounds')">Rounds</button>
-                <button class="admin-tab" onclick="switchTab(this, 'solo-match')">Solo Match</button>
-                <button class="admin-tab" onclick="switchTab(this, 'team-match')">Team Match</button>
             </div>
 
             <!-- TAB: PLAYERS -->
@@ -67,127 +360,31 @@
                 <div id="players-list"></div>
             </div>
 
-            <!-- TAB: GAMES -->
-            <div id="tab-games" class="tab-content">
-                <div class="panel">
-                    <div class="panel-title">Add Game</div>
-                    <div class="form-group">
-                        <label class="form-label">Name</label>
-                        <input type="text" id="new-game-name" class="form-input" placeholder="e.g. Mario Kart">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Type</label>
-                        <select id="new-game-type" class="form-select" onchange="toggleGameTypeFields()">
-                            <option value="solo">Solo</option>
-                            <option value="team">Team</option>
-                        </select>
-                    </div>
-                    <!-- Solo fields -->
-                    <div id="solo-points-fields">
-                        <div class="form-group">
-                            <label class="form-label">Placement Points (comma-separated: 1st, 2nd, 3rd...)</label>
-                            <input type="text" id="new-game-placements" class="form-input" placeholder="10, 7, 5, 3, 1">
-                        </div>
-                    </div>
-                    <!-- Team fields -->
-                    <div id="team-points-fields" style="display:none;">
-                        <div class="points-row" style="display:flex; gap:var(--space-sm);">
-                            <div class="form-group" style="flex:1;">
-                                <label class="form-label">Win Points</label>
-                                <input type="number" id="new-game-win" class="form-input" placeholder="5" value="5">
-                            </div>
-                            <div class="form-group" style="flex:1;">
-                                <label class="form-label">Lose Points</label>
-                                <input type="number" id="new-game-lose" class="form-input" placeholder="2" value="2">
-                            </div>
-                        </div>
-                    </div>
-                    <button class="btn btn-primary" onclick="addGame()">Add Game</button>
-                </div>
-                <div id="games-list"></div>
-            </div>
-
             <!-- TAB: ROUNDS -->
             <div id="tab-rounds" class="tab-content">
-                <div class="panel">
-                    <div class="panel-title">Add Round</div>
-                    <div style="display:flex; gap:var(--space-sm); flex-wrap:wrap;">
-                        <input type="text" id="new-round-name" class="form-input" placeholder="e.g. Round 1" style="flex:1; min-width:150px;">
-                        <input type="number" id="new-round-order" class="form-input" placeholder="Order #" style="width:100px;" value="1">
-                        <button class="btn btn-primary" onclick="addRound()">Add</button>
-                    </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+                    <h3 style="font-family:var(--font-display);font-size:0.8rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:2px;">All Rounds</h3>
+                    <button class="btn btn-primary" onclick="openNewRoundModal()">+ New Round</button>
                 </div>
                 <div id="rounds-list"></div>
+                <div id="manage-round-section"></div>
             </div>
-
-            <!-- TAB: SOLO MATCH -->
-            <div id="tab-solo-match" class="tab-content">
-                <div class="panel">
-                    <div class="panel-title">Record Solo Match</div>
-                    <div class="form-group">
-                        <label class="form-label">Round</label>
-                        <select id="solo-round" class="form-select"></select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Game (Solo only)</label>
-                        <select id="solo-game" class="form-select"></select>
-                    </div>
-                    <div id="solo-placement-area"></div>
-                    <button class="btn btn-success" onclick="submitSoloMatch()" style="margin-top:var(--space-md);">Submit Results</button>
-                </div>
-            </div>
-
-            <!-- TAB: TEAM MATCH -->
-            <div id="tab-team-match" class="tab-content">
-                <div class="panel">
-                    <div class="panel-title">Record Team Match</div>
-                    <div class="form-group">
-                        <label class="form-label">Round</label>
-                        <select id="team-round" class="form-select"></select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Game (Team only)</label>
-                        <select id="team-game" class="form-select"></select>
-                    </div>
-
-                    <div id="team-setup-area" style="margin-top:var(--space-lg);">
-                        <div class="form-group">
-                            <label class="form-label">Select Team — Click once for ALPHA (cyan), twice for BRAVO (magenta)</label>
-                        </div>
-                        <div id="team-player-chips" class="player-select-grid"></div>
-
-                        <div id="team-summary" style="margin-top:var(--space-md);"></div>
-
-                        <div class="form-group" style="margin-top:var(--space-md);">
-                            <label class="form-label">Winner</label>
-                            <select id="team-winner" class="form-select">
-                                <option value="Alpha">Alpha</option>
-                                <option value="Bravo">Bravo</option>
-                            </select>
-                        </div>
-
-                        <div class="points-row" style="display:flex; gap:var(--space-sm); margin-top:var(--space-sm);">
-                            <div class="form-group" style="flex:1;">
-                                <label class="form-label">Win Points (per player)</label>
-                                <input type="number" id="team-win-pts" class="form-input" value="5">
-                            </div>
-                            <div class="form-group" style="flex:1;">
-                                <label class="form-label">Lose Points (per player)</label>
-                                <input type="number" id="team-lose-pts" class="form-input" value="2">
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="btn btn-success" onclick="submitTeamMatch()" style="margin-top:var(--space-md);">Submit Results</button>
-                </div>
-            </div>
-
-        </div><!-- end admin-panel -->
+        </div>
     </div>
 
-    <!-- Modal overlay -->
-    <div id="modal-overlay" class="modal-overlay" onclick="closeModal(event)">
+    <!-- NEW ROUND MODAL -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModalOverlay(event)">
         <div class="modal" id="modal-content"></div>
+    </div>
+
+    <!-- MATCH RESULT MODAL -->
+    <div id="match-modal-overlay" class="modal-overlay" onclick="closeMatchModalOverlay(event)">
+        <div class="modal" id="match-modal-content"></div>
+    </div>
+
+    <!-- MOVE PLAYER MODAL -->
+    <div id="move-modal-overlay" class="modal-overlay" onclick="closeMoveModalOverlay(event)">
+        <div class="modal" id="move-modal-content" style="max-width:320px;"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -196,10 +393,21 @@
     // ============================================
     // STATE
     // ============================================
-    let players = [];
-    let games = [];
-    let rounds = [];
-    let playerTeamAssignment = {}; // playerId -> null | 'Alpha' | 'Bravo'
+    let allPlayers = [];
+    let allRounds = [];
+    let allTeams = [];
+    let playerStandings = [];
+
+    // New round wizard state
+    let wizardStep = 1;
+    let wizardData = {};
+    let generatedTeams = []; // [{label, players:[]}]
+
+    // Current managed round
+    let managedRound = null;
+    let managedMatches = [];
+    let managedRoundPlayers = [];
+    let managedRoundTeams = [];
 
     // ============================================
     // AUTH
@@ -231,17 +439,13 @@
     }
 
     // ============================================
-    // TAB SWITCHING
+    // TABS
     // ============================================
     function switchTab(btn, name) {
         document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(`tab-${name}`).classList.add('active');
-
-        // Refresh dropdowns when switching to match tabs
-        if (name === 'solo-match') populateSoloMatchForm();
-        if (name === 'team-match') populateTeamMatchForm();
     }
 
     // ============================================
@@ -249,9 +453,13 @@
     // ============================================
     async function loadAllData() {
         try {
-            [players, games, rounds] = await Promise.all([fetchPlayers(), fetchGames(), fetchRounds()]);
+            [allPlayers, allRounds, allTeams, playerStandings] = await Promise.all([
+                fetchPlayers(),
+                fetchRounds(),
+                fetchTeams(),
+                fetchPlayerStandings()
+            ]);
             renderPlayersList();
-            renderGamesList();
             renderRoundsList();
         } catch (err) {
             console.error(err);
@@ -264,11 +472,11 @@
     // ============================================
     function renderPlayersList() {
         const container = document.getElementById('players-list');
-        if (players.length === 0) {
+        if (allPlayers.length === 0) {
             container.innerHTML = '<div class="empty-state">No players yet.</div>';
             return;
         }
-        container.innerHTML = players.map(p => `
+        container.innerHTML = allPlayers.map(p => `
             <div class="admin-list-item">
                 <div class="admin-list-info">
                     <div class="admin-list-title">${escapeHtml(p.gamertag)}</div>
@@ -289,7 +497,8 @@
             document.getElementById('new-gamertag').value = '';
             document.getElementById('new-realname').value = '';
             showToast(`${gamertag} added`);
-            players = await fetchPlayers();
+            allPlayers = await fetchPlayers();
+            playerStandings = await fetchPlayerStandings();
             renderPlayersList();
         } catch (err) {
             showToast(err.message, 'error');
@@ -302,7 +511,8 @@
             const { error } = await supabaseClient.from('players').delete().eq('id', id);
             if (error) throw error;
             showToast('Player removed');
-            players = await fetchPlayers();
+            allPlayers = await fetchPlayers();
+            playerStandings = await fetchPlayerStandings();
             renderPlayersList();
         } catch (err) {
             showToast(err.message, 'error');
@@ -310,128 +520,55 @@
     }
 
     // ============================================
-    // GAMES CRUD
+    // ROUNDS LIST
     // ============================================
-    function toggleGameTypeFields() {
-        const type = document.getElementById('new-game-type').value;
-        document.getElementById('solo-points-fields').style.display = type === 'solo' ? 'block' : 'none';
-        document.getElementById('team-points-fields').style.display = type === 'team' ? 'block' : 'none';
+    function getTypeBadge(type) {
+        if (type === 'ffa') return '<span class="badge badge-ffa">FFA</span>';
+        if (type === 'solo_bracket') return '<span class="badge badge-solo">Solo Bracket</span>';
+        if (type === 'team_bracket') return '<span class="badge badge-team">Team Bracket</span>';
+        return `<span class="badge">${escapeHtml(type)}</span>`;
     }
 
-    function renderGamesList() {
-        const container = document.getElementById('games-list');
-        if (games.length === 0) {
-            container.innerHTML = '<div class="empty-state">No games yet.</div>';
-            return;
-        }
-        container.innerHTML = games.map(g => {
-            let meta = g.type.toUpperCase();
-            if (g.type === 'solo' && g.placement_points) {
-                const pts = Object.values(g.placement_points).join(', ');
-                meta += ` — Points: ${pts}`;
-            } else if (g.type === 'team') {
-                meta += ` — Win: ${g.win_points}, Lose: ${g.lose_points}`;
-            }
-            return `
-                <div class="admin-list-item">
-                    <div class="admin-list-info">
-                        <div class="admin-list-title">${escapeHtml(g.name)}</div>
-                        <div class="admin-list-meta">${escapeHtml(meta)}</div>
-                    </div>
-                    <button class="btn btn-danger btn-sm" onclick="deleteGame('${g.id}')">Delete</button>
-                </div>
-            `;
-        }).join('');
+    function getStatusBadge(status) {
+        if (status === 'active') return '<span class="badge badge-active">Active</span>';
+        return '<span class="badge badge-completed">Completed</span>';
     }
 
-    async function addGame() {
-        const name = document.getElementById('new-game-name').value.trim();
-        const type = document.getElementById('new-game-type').value;
-        if (!name) return showToast('Enter a game name', 'error');
-
-        let gameData = { name, type };
-
-        if (type === 'solo') {
-            const raw = document.getElementById('new-game-placements').value.trim();
-            if (!raw) return showToast('Enter placement points', 'error');
-            const points = raw.split(',').map(v => parseInt(v.trim())).filter(v => !isNaN(v));
-            const placementObj = {};
-            points.forEach((p, i) => placementObj[String(i + 1)] = p);
-            gameData.placement_points = placementObj;
-        } else {
-            gameData.win_points = parseInt(document.getElementById('new-game-win').value) || 0;
-            gameData.lose_points = parseInt(document.getElementById('new-game-lose').value) || 0;
-        }
-
-        try {
-            const { error } = await supabaseClient.from('games').insert(gameData);
-            if (error) throw error;
-            document.getElementById('new-game-name').value = '';
-            document.getElementById('new-game-placements').value = '';
-            showToast(`${name} added`);
-            games = await fetchGames();
-            renderGamesList();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    async function deleteGame(id) {
-        if (!confirm('Delete this game? Associated matches will also be deleted.')) return;
-        try {
-            const { error } = await supabaseClient.from('games').delete().eq('id', id);
-            if (error) throw error;
-            showToast('Game removed');
-            games = await fetchGames();
-            renderGamesList();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    // ============================================
-    // ROUNDS CRUD
-    // ============================================
     function renderRoundsList() {
         const container = document.getElementById('rounds-list');
-        if (rounds.length === 0) {
-            container.innerHTML = '<div class="empty-state">No rounds yet.</div>';
+        if (allRounds.length === 0) {
+            container.innerHTML = '<div class="empty-state">No rounds yet. Create one above.</div>';
             return;
         }
-        container.innerHTML = rounds.map(r => `
+        container.innerHTML = allRounds.map(r => `
             <div class="admin-list-item">
                 <div class="admin-list-info">
                     <div class="admin-list-title">${escapeHtml(r.name)}</div>
-                    <div class="admin-list-meta">Order: ${r.sort_order}</div>
+                    <div class="admin-list-meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
+                        ${getTypeBadge(r.type)}
+                        ${getStatusBadge(r.status)}
+                        <span style="color:var(--text-dim);font-size:0.75rem;">${escapeHtml(r.game_name)}</span>
+                    </div>
                 </div>
-                <button class="btn btn-danger btn-sm" onclick="deleteRound('${r.id}')">Delete</button>
+                <div style="display:flex;gap:var(--space-sm);">
+                    <button class="btn btn-purple btn-sm" onclick="manageRound('${r.id}')">Manage</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRound('${r.id}')">Delete</button>
+                </div>
             </div>
         `).join('');
-    }
-
-    async function addRound() {
-        const name = document.getElementById('new-round-name').value.trim();
-        const sort_order = parseInt(document.getElementById('new-round-order').value) || 0;
-        if (!name) return showToast('Enter a round name', 'error');
-        try {
-            const { error } = await supabaseClient.from('rounds').insert({ name, sort_order });
-            if (error) throw error;
-            document.getElementById('new-round-name').value = '';
-            showToast(`${name} added`);
-            rounds = await fetchRounds();
-            renderRoundsList();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
     }
 
     async function deleteRound(id) {
-        if (!confirm('Delete this round and all its matches?')) return;
+        if (!confirm('Delete this round and all its data?')) return;
         try {
             const { error } = await supabaseClient.from('rounds').delete().eq('id', id);
             if (error) throw error;
-            showToast('Round removed');
-            rounds = await fetchRounds();
+            showToast('Round deleted');
+            if (managedRound && managedRound.id === id) {
+                managedRound = null;
+                document.getElementById('manage-round-section').innerHTML = '';
+            }
+            allRounds = await fetchRounds();
             renderRoundsList();
         } catch (err) {
             showToast(err.message, 'error');
@@ -439,249 +576,1086 @@
     }
 
     // ============================================
-    // SOLO MATCH
+    // NEW ROUND MODAL
     // ============================================
-    function populateSoloMatchForm() {
-        const roundSelect = document.getElementById('solo-round');
-        const gameSelect = document.getElementById('solo-game');
-
-        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
-        const soloGames = games.filter(g => g.type === 'solo');
-        gameSelect.innerHTML = soloGames.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
-
-        // Show placement entry
-        gameSelect.onchange = renderSoloPlacementArea;
-        renderSoloPlacementArea();
+    function openNewRoundModal() {
+        wizardStep = 1;
+        wizardData = {};
+        generatedTeams = [];
+        renderWizardStep();
+        document.getElementById('modal-overlay').classList.add('show');
     }
 
-    function renderSoloPlacementArea() {
-        const container = document.getElementById('solo-placement-area');
-        const gameId = document.getElementById('solo-game').value;
-        const game = games.find(g => g.id === gameId);
-        if (!game || players.length === 0) {
-            container.innerHTML = '<div class="empty-state">Add players and solo games first.</div>';
+    function closeModalOverlay(e) {
+        if (e.target === document.getElementById('modal-overlay')) {
+            document.getElementById('modal-overlay').classList.remove('show');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('modal-overlay').classList.remove('show');
+    }
+
+    function renderWizardStep() {
+        const modal = document.getElementById('modal-content');
+        if (wizardStep === 1) renderStep1(modal);
+        else if (wizardStep === 2) renderStep2(modal);
+        else if (wizardStep === 3) renderStep3(modal);
+    }
+
+    function renderStep1(modal) {
+        modal.innerHTML = `
+            <div class="modal-title">New Round</div>
+            <div class="modal-step-header">Step 1 of 3 — Basic Info</div>
+
+            <div class="form-group">
+                <label class="form-label">Round Name</label>
+                <input type="text" id="w-round-name" class="form-input" placeholder="e.g. Round 1 — Finals" value="${escapeHtml(wizardData.name || '')}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Game Name</label>
+                <input type="text" id="w-game-name" class="form-input" placeholder="e.g. Mario Kart 8" value="${escapeHtml(wizardData.gameName || '')}">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Round Type</label>
+                <select id="w-round-type" class="form-select" onchange="updateStep1TypeFields()">
+                    <option value="ffa" ${wizardData.type === 'ffa' ? 'selected' : ''}>FFA (Free-For-All)</option>
+                    <option value="solo_bracket" ${wizardData.type === 'solo_bracket' ? 'selected' : ''}>Solo Bracket</option>
+                    <option value="team_bracket" ${wizardData.type === 'team_bracket' ? 'selected' : ''}>Team Bracket</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Sort Order</label>
+                <input type="number" id="w-sort-order" class="form-input" value="${wizardData.sortOrder !== undefined ? wizardData.sortOrder : allRounds.length}" style="width:100px;">
+            </div>
+
+            <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                <span class="chevron">▼</span> Point Configuration
+            </div>
+            <div class="collapsible-body" id="points-config">
+                <div id="ffa-points-section">
+                    <div class="form-group">
+                        <label class="form-label">Placement Points</label>
+                        <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-bottom:var(--space-sm);">Format: "1:10, 2:7, 3:5, 4:3, 5:1" — placement:points</p>
+                        <textarea id="w-ffa-points" class="form-textarea" placeholder="1:10, 2:7, 3:5, 4:3, 5:1">${escapeHtml(wizardData.ffaPointsRaw || '')}</textarea>
+                    </div>
+                </div>
+                <div id="bracket-points-section" style="display:none;">
+                    <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;">
+                        <div class="form-group" style="flex:1;min-width:100px;">
+                            <label class="form-label">Match Win Pts</label>
+                            <input type="number" id="w-match-win" class="form-input" value="${wizardData.matchWin !== undefined ? wizardData.matchWin : 1}" min="0">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:100px;">
+                            <label class="form-label">1st Place Bonus</label>
+                            <input type="number" id="w-place-1" class="form-input" value="${wizardData.place1 !== undefined ? wizardData.place1 : 5}" min="0">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:100px;">
+                            <label class="form-label">2nd Place Bonus</label>
+                            <input type="number" id="w-place-2" class="form-input" value="${wizardData.place2 !== undefined ? wizardData.place2 : 3}" min="0">
+                        </div>
+                        <div class="form-group" style="flex:1;min-width:100px;">
+                            <label class="form-label">3rd Place Bonus</label>
+                            <input type="number" id="w-place-3" class="form-input" value="${wizardData.place3 !== undefined ? wizardData.place3 : 1}" min="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-nav">
+                <button class="btn btn-sm" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="wizardNext1()">Next &rarr;</button>
+            </div>
+        `;
+        updateStep1TypeFields();
+    }
+
+    function updateStep1TypeFields() {
+        const type = document.getElementById('w-round-type') ? document.getElementById('w-round-type').value : (wizardData.type || 'ffa');
+        const ffaSec = document.getElementById('ffa-points-section');
+        const bracketSec = document.getElementById('bracket-points-section');
+        if (ffaSec && bracketSec) {
+            ffaSec.style.display = type === 'ffa' ? 'block' : 'none';
+            bracketSec.style.display = type !== 'ffa' ? 'block' : 'none';
+        }
+    }
+
+    function toggleCollapsible(header) {
+        header.classList.toggle('collapsed');
+        const body = header.nextElementSibling;
+        body.classList.toggle('hidden');
+    }
+
+    function wizardNext1() {
+        const name = document.getElementById('w-round-name').value.trim();
+        const gameName = document.getElementById('w-game-name').value.trim();
+        const type = document.getElementById('w-round-type').value;
+        const sortOrder = parseInt(document.getElementById('w-sort-order').value) || 0;
+
+        if (!name) return showToast('Enter a round name', 'error');
+        if (!gameName) return showToast('Enter a game name', 'error');
+
+        wizardData.name = name;
+        wizardData.gameName = gameName;
+        wizardData.type = type;
+        wizardData.sortOrder = sortOrder;
+
+        if (type === 'ffa') {
+            const raw = document.getElementById('w-ffa-points').value.trim();
+            wizardData.ffaPointsRaw = raw;
+            const pointsObj = {};
+            if (raw) {
+                raw.split(',').forEach(part => {
+                    const [k, v] = part.trim().split(':');
+                    const placement = parseInt(k);
+                    const pts = parseInt(v);
+                    if (!isNaN(placement) && !isNaN(pts)) pointsObj[String(placement)] = pts;
+                });
+            }
+            wizardData.ffaPoints = pointsObj;
+        } else {
+            wizardData.matchWin = parseInt(document.getElementById('w-match-win').value) || 1;
+            wizardData.place1 = parseInt(document.getElementById('w-place-1').value) || 5;
+            wizardData.place2 = parseInt(document.getElementById('w-place-2').value) || 3;
+            wizardData.place3 = parseInt(document.getElementById('w-place-3').value) || 1;
+        }
+
+        wizardStep = 2;
+        renderWizardStep();
+    }
+
+    function renderStep2(modal) {
+        const type = wizardData.type;
+
+        if (type === 'ffa' || type === 'solo_bracket') {
+            // Show player checkboxes
+            const selectedIds = new Set(wizardData.selectedPlayerIds || allPlayers.map(p => p.id));
+            const checkboxes = allPlayers.map(p => `
+                <label class="player-checkbox-item ${selectedIds.has(p.id) ? 'checked' : ''}" id="pc-label-${p.id}">
+                    <input type="checkbox" id="pc-${p.id}" value="${p.id}" ${selectedIds.has(p.id) ? 'checked' : ''} onchange="updatePlayerCheckbox('${p.id}')">
+                    <span class="player-checkbox-label">${escapeHtml(p.gamertag)}</span>
+                </label>
+            `).join('');
+
+            modal.innerHTML = `
+                <div class="modal-title">New Round</div>
+                <div class="modal-step-header">Step 2 of 3 — Select Participants</div>
+
+                <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-sm);">
+                    <button class="btn btn-sm" onclick="selectAllPlayers(true)">Select All</button>
+                    <button class="btn btn-sm" onclick="selectAllPlayers(false)">Deselect All</button>
+                    <span id="player-count-label" class="section-count" style="align-self:center;">${selectedIds.size} selected</span>
+                </div>
+                <div class="player-checkbox-grid">${checkboxes || '<div class="empty-state">No players found. Add players first.</div>'}</div>
+
+                <div class="modal-nav">
+                    <button class="btn btn-sm" onclick="wizardBack()">← Back</button>
+                    <button class="btn btn-primary btn-sm" onclick="wizardNext2()">Next →</button>
+                </div>
+            `;
+        } else {
+            // team_bracket
+            const hasTeams = allTeams.length > 0;
+            const useMode = wizardData.teamMode || (hasTeams ? 'existing' : 'new');
+            wizardData.teamMode = useMode;
+
+            let teamsSection = '';
+            if (hasTeams) {
+                teamsSection = `
+                    <div class="form-group">
+                        <label class="form-label">Team Selection Mode</label>
+                        <div class="radio-group">
+                            <label class="radio-item">
+                                <input type="radio" name="team-mode" value="existing" ${useMode === 'existing' ? 'checked' : ''} onchange="changeTeamMode('existing')">
+                                Use Existing Teams
+                            </label>
+                            <label class="radio-item">
+                                <input type="radio" name="team-mode" value="new" ${useMode === 'new' ? 'checked' : ''} onchange="changeTeamMode('new')">
+                                Create New Teams
+                            </label>
+                        </div>
+                    </div>
+                `;
+            }
+
+            modal.innerHTML = `
+                <div class="modal-title">New Round</div>
+                <div class="modal-step-header">Step 2 of 3 — Select Participants</div>
+                ${teamsSection}
+                <div id="team-selection-area"></div>
+                <div class="modal-nav">
+                    <button class="btn btn-sm" onclick="wizardBack()">← Back</button>
+                    <button class="btn btn-primary btn-sm" onclick="wizardNext2()">Next →</button>
+                </div>
+            `;
+
+            renderTeamSelectionArea(useMode);
+        }
+    }
+
+    function changeTeamMode(mode) {
+        wizardData.teamMode = mode;
+        renderTeamSelectionArea(mode);
+    }
+
+    function renderTeamSelectionArea(mode) {
+        const area = document.getElementById('team-selection-area');
+        if (!area) return;
+
+        if (mode === 'existing') {
+            const selectedTeamIds = new Set(wizardData.selectedTeamIds || allTeams.map(t => t.id));
+            const checkboxes = allTeams.map(t => {
+                const playerNames = (t.team_players || []).map(tp => tp.player ? tp.player.gamertag : '?').join(', ');
+                return `
+                    <label class="team-checkbox-item ${selectedTeamIds.has(t.id) ? 'checked' : ''}" id="tc-label-${t.id}">
+                        <input type="checkbox" id="tc-${t.id}" value="${t.id}" ${selectedTeamIds.has(t.id) ? 'checked' : ''} onchange="updateTeamCheckbox('${t.id}')">
+                        <div>
+                            <div style="font-family:var(--font-mono);font-size:0.85rem;color:var(--text-primary);">${escapeHtml(t.team_label)}</div>
+                            <div style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);">${escapeHtml(playerNames)}</div>
+                        </div>
+                    </label>
+                `;
+            }).join('');
+            area.innerHTML = `
+                <div class="form-label" style="margin-bottom:var(--space-sm);">Select Teams</div>
+                <div class="team-checkbox-grid">${checkboxes || '<div class="empty-state">No teams found.</div>'}</div>
+            `;
+        } else {
+            // Create new teams
+            const selectedIds = new Set(wizardData.newTeamSelectedPlayerIds || allPlayers.map(p => p.id));
+            const teamSize = wizardData.teamSize || 2;
+            const checkboxes = allPlayers.map(p => `
+                <label class="player-checkbox-item ${selectedIds.has(p.id) ? 'checked' : ''}" id="npc-label-${p.id}">
+                    <input type="checkbox" id="npc-${p.id}" value="${p.id}" ${selectedIds.has(p.id) ? 'checked' : ''} onchange="updateNewTeamPlayerCheckbox('${p.id}')">
+                    <span class="player-checkbox-label">${escapeHtml(p.gamertag)}</span>
+                </label>
+            `).join('');
+
+            area.innerHTML = `
+                <div class="form-group">
+                    <label class="form-label">Team Size (players per team)</label>
+                    <input type="number" id="new-team-size" class="form-input" value="${teamSize}" min="1" max="10" style="width:100px;" onchange="wizardData.teamSize = parseInt(this.value)||2">
+                </div>
+                <div class="form-label" style="margin-bottom:var(--space-sm);">Select Players to Include</div>
+                <div class="player-checkbox-grid" style="margin-bottom:var(--space-md);">${checkboxes || '<div class="empty-state">No players found.</div>'}</div>
+                <button class="btn btn-warning btn-sm" onclick="previewTeams()">Generate Teams Preview</button>
+                <div id="teams-preview-area" style="margin-top:var(--space-lg);"></div>
+            `;
+
+            // Re-render preview if we have teams already
+            if (generatedTeams.length > 0) {
+                renderTeamsPreview();
+            }
+        }
+    }
+
+    function updatePlayerCheckbox(playerId) {
+        const cb = document.getElementById(`pc-${playerId}`);
+        const label = document.getElementById(`pc-label-${playerId}`);
+        if (cb.checked) {
+            label.classList.add('checked');
+        } else {
+            label.classList.remove('checked');
+        }
+        // Update count
+        const selected = document.querySelectorAll('.player-checkbox-item input[type="checkbox"]:checked');
+        const countLabel = document.getElementById('player-count-label');
+        if (countLabel) countLabel.textContent = `${selected.length} selected`;
+    }
+
+    function selectAllPlayers(check) {
+        document.querySelectorAll('.player-checkbox-item input[type="checkbox"]').forEach(cb => {
+            cb.checked = check;
+            const label = document.getElementById(`pc-label-${cb.value}`);
+            if (label) label.classList.toggle('checked', check);
+        });
+        const countLabel = document.getElementById('player-count-label');
+        if (countLabel) countLabel.textContent = check ? `${allPlayers.length} selected` : '0 selected';
+    }
+
+    function updateTeamCheckbox(teamId) {
+        const cb = document.getElementById(`tc-${teamId}`);
+        const label = document.getElementById(`tc-label-${teamId}`);
+        if (cb.checked) label.classList.add('checked');
+        else label.classList.remove('checked');
+    }
+
+    function updateNewTeamPlayerCheckbox(playerId) {
+        const cb = document.getElementById(`npc-${playerId}`);
+        const label = document.getElementById(`npc-label-${playerId}`);
+        if (cb.checked) label.classList.add('checked');
+        else label.classList.remove('checked');
+        // Reset generated teams
+        generatedTeams = [];
+        const previewArea = document.getElementById('teams-preview-area');
+        if (previewArea) previewArea.innerHTML = '';
+    }
+
+    function previewTeams() {
+        const teamSize = parseInt(document.getElementById('new-team-size').value) || 2;
+        wizardData.teamSize = teamSize;
+
+        const selectedPlayerIds = [];
+        document.querySelectorAll('[id^="npc-"]').forEach(cb => {
+            if (cb.type === 'checkbox' && cb.checked) selectedPlayerIds.push(cb.value);
+        });
+        wizardData.newTeamSelectedPlayerIds = new Set(selectedPlayerIds);
+
+        if (selectedPlayerIds.length < 2) {
+            return showToast('Select at least 2 players', 'error');
+        }
+
+        // Build players with points for snake draft
+        const playersWithPts = selectedPlayerIds.map(id => {
+            const ps = playerStandings.find(s => s.id === id);
+            const p = allPlayers.find(pl => pl.id === id);
+            return { ...p, total_points: ps ? ps.total_points : 0 };
+        });
+
+        generatedTeams = generateTeamsFromPlayers(playersWithPts, teamSize);
+        renderTeamsPreview();
+    }
+
+    function renderTeamsPreview() {
+        const previewArea = document.getElementById('teams-preview-area');
+        if (!previewArea) return;
+        if (generatedTeams.length === 0) {
+            previewArea.innerHTML = '';
             return;
         }
 
-        const placements = game.placement_points || {};
-        const maxPlacements = Object.keys(placements).length;
+        let html = '<div style="font-family:var(--font-display);font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:var(--space-sm);">Team Preview (click player to move)</div>';
+        html += '<div class="teams-preview">';
+        generatedTeams.forEach((team, teamIdx) => {
+            html += `<div class="team-preview-card"><div class="team-preview-label">${escapeHtml(team.label)}</div>`;
+            team.players.forEach((p, playerIdx) => {
+                html += `
+                    <div class="team-preview-player">
+                        <span>${escapeHtml(p.gamertag)}</span>
+                        <button class="move-player-btn" onclick="openMovePlayerModal(${teamIdx}, ${playerIdx})">Move</button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        });
+        html += '</div>';
+        previewArea.innerHTML = html;
+    }
 
-        let html = `<div class="form-label" style="margin-top:var(--space-md);">Assign Placements (${maxPlacements} positions configured)</div>`;
-        for (let i = 1; i <= maxPlacements; i++) {
-            const pts = placements[String(i)] || 0;
-            html += `
-                <div style="display:flex; align-items:center; gap:var(--space-sm); margin-bottom:var(--space-sm);">
-                    <span class="rank ${i<=3 ? 'rank-'+i : ''}" style="min-width:40px;">#${i}</span>
-                    <select class="form-select solo-placement-select" data-placement="${i}">
-                        <option value="">-- Select Player --</option>
-                        ${players.map(p => `<option value="${p.id}">${escapeHtml(p.gamertag)}</option>`).join('')}
-                    </select>
-                    <span class="points" style="font-size:0.85rem; min-width:50px;">${pts}pts</span>
-                </div>
+    function openMovePlayerModal(fromTeamIdx, playerIdx) {
+        const player = generatedTeams[fromTeamIdx].players[playerIdx];
+        const modal = document.getElementById('move-modal-content');
+        let options = generatedTeams
+            .map((t, i) => i !== fromTeamIdx ? `<option value="${i}">${escapeHtml(t.label)}</option>` : '')
+            .join('');
+
+        modal.innerHTML = `
+            <div class="modal-title" style="margin-bottom:var(--space-md);">Move ${escapeHtml(player.gamertag)}</div>
+            <div class="form-group">
+                <label class="form-label">Move to Team</label>
+                <select id="move-to-team" class="form-select">${options}</select>
+            </div>
+            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-md);">
+                <button class="btn btn-sm" onclick="closeMoveModal()">Cancel</button>
+                <button class="btn btn-primary btn-sm" onclick="confirmMovePlayer(${fromTeamIdx}, ${playerIdx})">Move</button>
+            </div>
+        `;
+        document.getElementById('move-modal-overlay').classList.add('show');
+    }
+
+    function closeMoveModalOverlay(e) {
+        if (e.target === document.getElementById('move-modal-overlay')) closeMoveModal();
+    }
+    function closeMoveModal() {
+        document.getElementById('move-modal-overlay').classList.remove('show');
+    }
+
+    function confirmMovePlayer(fromTeamIdx, playerIdx) {
+        const toTeamIdx = parseInt(document.getElementById('move-to-team').value);
+        const player = generatedTeams[fromTeamIdx].players.splice(playerIdx, 1)[0];
+        generatedTeams[toTeamIdx].players.push(player);
+        closeMoveModal();
+        renderTeamsPreview();
+    }
+
+    function wizardNext2() {
+        const type = wizardData.type;
+
+        if (type === 'ffa' || type === 'solo_bracket') {
+            const selected = [];
+            document.querySelectorAll('.player-checkbox-item input[type="checkbox"]:checked').forEach(cb => {
+                selected.push(cb.value);
+            });
+            if (selected.length < 2) return showToast('Select at least 2 players', 'error');
+            wizardData.selectedPlayerIds = selected;
+        } else {
+            // team_bracket
+            const mode = wizardData.teamMode || 'new';
+            if (mode === 'existing') {
+                const selectedTeams = [];
+                document.querySelectorAll('[id^="tc-"]').forEach(cb => {
+                    if (cb.type === 'checkbox' && cb.checked) selectedTeams.push(cb.value);
+                });
+                if (selectedTeams.length < 2) return showToast('Select at least 2 teams', 'error');
+                wizardData.selectedTeamIds = selectedTeams;
+            } else {
+                if (generatedTeams.length < 2) return showToast('Generate teams first (need at least 2)', 'error');
+                wizardData.generatedTeams = generatedTeams;
+                wizardData.teamSize = parseInt(document.getElementById('new-team-size').value) || 2;
+            }
+        }
+
+        wizardStep = 3;
+        renderWizardStep();
+    }
+
+    function wizardBack() {
+        wizardStep--;
+        renderWizardStep();
+    }
+
+    function renderStep3(modal) {
+        const type = wizardData.type;
+        let participantsSummary = '';
+
+        if (type === 'ffa' || type === 'solo_bracket') {
+            const names = wizardData.selectedPlayerIds.map(id => {
+                const p = allPlayers.find(pl => pl.id === id);
+                return p ? p.gamertag : id;
+            }).join(', ');
+            participantsSummary = `<div class="review-item"><span class="review-label">Players</span><span class="review-value">${escapeHtml(names)}</span></div>`;
+        } else {
+            const mode = wizardData.teamMode || 'new';
+            if (mode === 'existing') {
+                const names = wizardData.selectedTeamIds.map(id => {
+                    const t = allTeams.find(tm => tm.id === id);
+                    return t ? t.team_label : id;
+                }).join(', ');
+                participantsSummary = `<div class="review-item"><span class="review-label">Teams</span><span class="review-value">${escapeHtml(names)}</span></div>`;
+            } else {
+                const teamLines = generatedTeams.map(t =>
+                    `${t.label}: ${t.players.map(p => p.gamertag).join(', ')}`
+                ).join(' | ');
+                participantsSummary = `<div class="review-item"><span class="review-label">New Teams</span><span class="review-value" style="word-break:break-word;">${escapeHtml(teamLines)}</span></div>`;
+            }
+        }
+
+        let pointsSummary = '';
+        if (type === 'ffa') {
+            const pts = Object.entries(wizardData.ffaPoints || {}).sort((a,b) => parseInt(a[0])-parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(', ');
+            pointsSummary = `<div class="review-item"><span class="review-label">FFA Points</span><span class="review-value">${escapeHtml(pts || 'None configured')}</span></div>`;
+        } else {
+            pointsSummary = `
+                <div class="review-item"><span class="review-label">Match Win</span><span class="review-value">${wizardData.matchWin}pts</span></div>
+                <div class="review-item"><span class="review-label">1st Place</span><span class="review-value">+${wizardData.place1}pts</span></div>
+                <div class="review-item"><span class="review-label">2nd Place</span><span class="review-value">+${wizardData.place2}pts</span></div>
+                <div class="review-item"><span class="review-label">3rd Place</span><span class="review-value">+${wizardData.place3}pts</span></div>
             `;
         }
-        container.innerHTML = html;
-    }
 
-    async function submitSoloMatch() {
-        const roundId = document.getElementById('solo-round').value;
-        const gameId = document.getElementById('solo-game').value;
-        if (!roundId || !gameId) return showToast('Select round and game', 'error');
+        modal.innerHTML = `
+            <div class="modal-title">New Round</div>
+            <div class="modal-step-header">Step 3 of 3 — Review & Create</div>
 
-        const game = games.find(g => g.id === gameId);
-        const placements = game.placement_points || {};
-        const selects = document.querySelectorAll('.solo-placement-select');
-
-        const results = [];
-        const usedPlayers = new Set();
-        for (const sel of selects) {
-            const playerId = sel.value;
-            const placement = parseInt(sel.dataset.placement);
-            if (!playerId) continue;
-            if (usedPlayers.has(playerId)) return showToast('Duplicate player selected', 'error');
-            usedPlayers.add(playerId);
-            results.push({
-                player_id: playerId,
-                placement,
-                points_awarded: placements[String(placement)] || 0
-            });
-        }
-
-        if (results.length === 0) return showToast('Assign at least one placement', 'error');
-
-        try {
-            // Create match
-            const { data: matchData, error: matchErr } = await supabaseClient
-                .from('matches')
-                .insert({ round_id: roundId, game_id: gameId, status: 'completed' })
-                .select()
-                .single();
-            if (matchErr) throw matchErr;
-
-            // Insert solo results
-            const soloResults = results.map(r => ({ ...r, match_id: matchData.id }));
-            const { error: resErr } = await supabaseClient.from('match_solo_results').insert(soloResults);
-            if (resErr) throw resErr;
-
-            showToast('Solo match recorded!');
-            populateSoloMatchForm();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    // ============================================
-    // TEAM MATCH
-    // ============================================
-    function populateTeamMatchForm() {
-        const roundSelect = document.getElementById('team-round');
-        const gameSelect = document.getElementById('team-game');
-
-        roundSelect.innerHTML = rounds.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('');
-        const teamGames = games.filter(g => g.type === 'team');
-        gameSelect.innerHTML = teamGames.map(g => `<option value="${g.id}">${escapeHtml(g.name)}</option>`).join('');
-
-        // Pre-fill win/lose from game config
-        gameSelect.onchange = () => {
-            const game = games.find(g => g.id === gameSelect.value);
-            if (game) {
-                document.getElementById('team-win-pts').value = game.win_points;
-                document.getElementById('team-lose-pts').value = game.lose_points;
-            }
-        };
-
-        // Render player chips
-        renderTeamPlayerChips();
-
-        // Trigger initial config load
-        if (teamGames.length > 0) gameSelect.onchange();
-    }
-
-    function renderTeamPlayerChips() {
-        const container = document.getElementById('team-player-chips');
-        playerTeamAssignment = {};
-        players.forEach(p => playerTeamAssignment[p.id] = null);
-
-        container.innerHTML = players.map(p => `
-            <div class="player-chip" data-id="${p.id}" onclick="cycleTeamAssignment('${p.id}')">
-                ${escapeHtml(p.gamertag)}
+            <div style="margin: var(--space-md) 0;">
+                <div class="review-item"><span class="review-label">Name</span><span class="review-value">${escapeHtml(wizardData.name)}</span></div>
+                <div class="review-item"><span class="review-label">Game</span><span class="review-value">${escapeHtml(wizardData.gameName)}</span></div>
+                <div class="review-item"><span class="review-label">Type</span><span class="review-value">${escapeHtml(wizardData.type)}</span></div>
+                <div class="review-item"><span class="review-label">Sort Order</span><span class="review-value">${wizardData.sortOrder}</span></div>
+                ${participantsSummary}
+                ${pointsSummary}
             </div>
-        `).join('');
-    }
 
-    function cycleTeamAssignment(playerId) {
-        const current = playerTeamAssignment[playerId];
-        if (current === null) playerTeamAssignment[playerId] = 'Alpha';
-        else if (current === 'Alpha') playerTeamAssignment[playerId] = 'Bravo';
-        else playerTeamAssignment[playerId] = null;
-
-        // Update chip visual
-        const chip = document.querySelector(`.player-chip[data-id="${playerId}"]`);
-        chip.classList.remove('selected-alpha', 'selected-bravo');
-        if (playerTeamAssignment[playerId] === 'Alpha') chip.classList.add('selected-alpha');
-        else if (playerTeamAssignment[playerId] === 'Bravo') chip.classList.add('selected-bravo');
-
-        updateTeamSummary();
-    }
-
-    function updateTeamSummary() {
-        const alphaPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Alpha');
-        const bravoPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Bravo');
-
-        document.getElementById('team-summary').innerHTML = `
-            <div style="display:flex; gap:var(--space-md); flex-wrap:wrap;">
-                <div style="flex:1; min-width:120px;">
-                    <div class="form-label" style="color:var(--neon-cyan);">Alpha (${alphaPlayers.length})</div>
-                    <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary);">
-                        ${alphaPlayers.map(p => escapeHtml(p.gamertag)).join(', ') || 'None'}
-                    </div>
-                </div>
-                <div style="flex:1; min-width:120px;">
-                    <div class="form-label" style="color:var(--neon-magenta);">Bravo (${bravoPlayers.length})</div>
-                    <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary);">
-                        ${bravoPlayers.map(p => escapeHtml(p.gamertag)).join(', ') || 'None'}
-                    </div>
-                </div>
+            <div class="modal-nav">
+                <button class="btn btn-sm" onclick="wizardBack()">← Back</button>
+                <button class="btn btn-success btn-sm" id="create-round-btn" onclick="createRound()">Create Round</button>
             </div>
         `;
     }
 
-    async function submitTeamMatch() {
-        const roundId = document.getElementById('team-round').value;
-        const gameId = document.getElementById('team-game').value;
-        const winnerLabel = document.getElementById('team-winner').value;
-        const winPts = parseInt(document.getElementById('team-win-pts').value) || 0;
-        const losePts = parseInt(document.getElementById('team-lose-pts').value) || 0;
-
-        if (!roundId || !gameId) return showToast('Select round and game', 'error');
-
-        const alphaPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Alpha');
-        const bravoPlayers = players.filter(p => playerTeamAssignment[p.id] === 'Bravo');
-
-        if (alphaPlayers.length === 0 || bravoPlayers.length === 0) {
-            return showToast('Both teams need at least one player', 'error');
-        }
+    async function createRound() {
+        const btn = document.getElementById('create-round-btn');
+        if (btn) btn.disabled = true;
 
         try {
-            // Create match
-            const { data: matchData, error: matchErr } = await supabaseClient
-                .from('matches')
-                .insert({ round_id: roundId, game_id: gameId, status: 'completed' })
+            const type = wizardData.type;
+
+            // Build round insert
+            const roundInsert = {
+                name: wizardData.name,
+                game_name: wizardData.gameName,
+                type: type,
+                sort_order: wizardData.sortOrder,
+                status: 'active'
+            };
+
+            if (type === 'ffa') {
+                roundInsert.ffa_placement_points = wizardData.ffaPoints || {};
+            } else {
+                roundInsert.match_win_points = wizardData.matchWin;
+                roundInsert.placement_1st_points = wizardData.place1;
+                roundInsert.placement_2nd_points = wizardData.place2;
+                roundInsert.placement_3rd_points = wizardData.place3;
+                if (wizardData.teamSize) roundInsert.team_size = wizardData.teamSize;
+            }
+
+            // Insert round
+            const { data: round, error: roundErr } = await supabaseClient
+                .from('rounds')
+                .insert(roundInsert)
                 .select()
                 .single();
-            if (matchErr) throw matchErr;
+            if (roundErr) throw roundErr;
 
-            // Create teams
-            const teamInserts = [
-                { match_id: matchData.id, team_label: 'Alpha', is_winner: winnerLabel === 'Alpha' },
-                { match_id: matchData.id, team_label: 'Bravo', is_winner: winnerLabel === 'Bravo' }
-            ];
-            const { data: teamsData, error: teamsErr } = await supabaseClient
-                .from('match_teams')
-                .insert(teamInserts)
-                .select();
-            if (teamsErr) throw teamsErr;
+            if (type === 'ffa' || type === 'solo_bracket') {
+                // Insert round_players
+                const rpInserts = wizardData.selectedPlayerIds.map(pid => ({
+                    round_id: round.id,
+                    player_id: pid
+                }));
+                const { error: rpErr } = await supabaseClient.from('round_players').insert(rpInserts);
+                if (rpErr) throw rpErr;
 
-            const alphaTeam = teamsData.find(t => t.team_label === 'Alpha');
-            const bravoTeam = teamsData.find(t => t.team_label === 'Bravo');
+                // For solo bracket: generate and insert bracket matches
+                if (type === 'solo_bracket') {
+                    // Build participants sorted by points
+                    const participants = wizardData.selectedPlayerIds.map(pid => {
+                        const ps = playerStandings.find(s => s.id === pid);
+                        return { id: pid, total_points: ps ? ps.total_points : 0 };
+                    }).sort((a, b) => b.total_points - a.total_points);
 
-            // Assign players to teams
-            const playerAssigns = [
-                ...alphaPlayers.map(p => ({ match_team_id: alphaTeam.id, player_id: p.id })),
-                ...bravoPlayers.map(p => ({ match_team_id: bravoTeam.id, player_id: p.id }))
-            ];
-            const { error: assignErr } = await supabaseClient.from('match_team_players').insert(playerAssigns);
-            if (assignErr) throw assignErr;
+                    const matchInserts = generateBracketMatches(participants, 'solo_bracket', round.id);
+                    const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
+                    if (matchErr) throw matchErr;
+                }
 
-            // Record points
-            const alphaPts = winnerLabel === 'Alpha' ? winPts : losePts;
-            const bravoPts = winnerLabel === 'Bravo' ? winPts : losePts;
+            } else {
+                // team_bracket
+                const mode = wizardData.teamMode || 'new';
+                let teamsToUse = []; // array of team DB objects {id, team_label}
 
-            const pointResults = [
-                ...alphaPlayers.map(p => ({ match_team_id: alphaTeam.id, player_id: p.id, points_awarded: alphaPts })),
-                ...bravoPlayers.map(p => ({ match_team_id: bravoTeam.id, player_id: p.id, points_awarded: bravoPts }))
-            ];
-            const { error: ptsErr } = await supabaseClient.from('match_team_results').insert(pointResults);
-            if (ptsErr) throw ptsErr;
+                if (mode === 'existing') {
+                    teamsToUse = allTeams.filter(t => wizardData.selectedTeamIds.includes(t.id));
+                } else {
+                    // Create/reuse teams and their players
+                    for (const team of generatedTeams) {
+                        // Check if team label already exists
+                        let existingTeam = allTeams.find(t => t.team_label === team.label);
+                        let teamId;
 
-            showToast('Team match recorded!');
-            populateTeamMatchForm();
+                        if (existingTeam) {
+                            teamId = existingTeam.id;
+                            // Clear existing team_players and re-assign
+                            await supabaseClient.from('team_players').delete().eq('team_id', teamId);
+                        } else {
+                            const { data: newTeam, error: teamErr } = await supabaseClient
+                                .from('teams')
+                                .insert({ team_label: team.label })
+                                .select()
+                                .single();
+                            if (teamErr) throw teamErr;
+                            teamId = newTeam.id;
+                        }
+
+                        // Insert team_players
+                        const tpInserts = team.players.map(p => ({ team_id: teamId, player_id: p.id }));
+                        if (tpInserts.length > 0) {
+                            const { error: tpErr } = await supabaseClient.from('team_players').insert(tpInserts);
+                            if (tpErr) throw tpErr;
+                        }
+
+                        teamsToUse.push({ id: teamId, team_label: team.label });
+                    }
+                }
+
+                // Insert round_teams
+                const rtInserts = teamsToUse.map(t => ({ round_id: round.id, team_id: t.id }));
+                const { error: rtErr } = await supabaseClient.from('round_teams').insert(rtInserts);
+                if (rtErr) throw rtErr;
+
+                // Generate bracket matches for teams
+                const teamParticipants = teamsToUse.map(t => ({ id: t.id, total_points: 0 }));
+                const matchInserts = generateBracketMatches(teamParticipants, 'team_bracket', round.id);
+                const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
+                if (matchErr) throw matchErr;
+            }
+
+            showToast(`Round "${wizardData.name}" created!`);
+            closeModal();
+
+            // Refresh data
+            allRounds = await fetchRounds();
+            allTeams = await fetchTeams();
+            renderRoundsList();
         } catch (err) {
             showToast(err.message, 'error');
+            console.error(err);
+            if (btn) btn.disabled = false;
         }
     }
 
     // ============================================
-    // MODAL
+    // MANAGE ROUND
     // ============================================
-    function openModal(html) {
-        document.getElementById('modal-content').innerHTML = html;
-        document.getElementById('modal-overlay').classList.add('show');
+    async function manageRound(roundId) {
+        const section = document.getElementById('manage-round-section');
+        section.innerHTML = '<div class="manage-section"><div class="loading">Loading round data</div></div>';
+
+        // Scroll to it
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        try {
+            managedRound = allRounds.find(r => r.id === roundId);
+            if (!managedRound) throw new Error('Round not found');
+
+            if (managedRound.type === 'ffa') {
+                await renderFfaManage(section);
+            } else {
+                await renderBracketManage(section);
+            }
+        } catch (err) {
+            section.innerHTML = `<div class="manage-section"><div class="empty-state">Error loading round: ${escapeHtml(err.message)}</div></div>`;
+            console.error(err);
+        }
     }
 
-    function closeModal(e) {
-        if (e.target === document.getElementById('modal-overlay')) {
-            document.getElementById('modal-overlay').classList.remove('show');
+    async function renderFfaManage(section) {
+        const round = managedRound;
+        const roundPlayers = await fetchRoundPlayers(round.id);
+        const existingResults = await fetchFfaResults(round.id);
+
+        // Build existing placements map
+        const existingMap = {};
+        existingResults.forEach(r => { existingMap[r.player_id] = r.placement; });
+
+        const players = roundPlayers.map(rp => rp.player).filter(Boolean);
+
+        let rowsHtml = '';
+        players.forEach(p => {
+            const existing = existingMap[p.id] || '';
+            rowsHtml += `
+                <div class="ffa-placement-row">
+                    <span class="ffa-placement-name">${escapeHtml(p.gamertag)}</span>
+                    <input type="number" class="form-input ffa-placement-input" id="place-${p.id}" data-player-id="${p.id}" value="${existing}" min="1" placeholder="—" style="width:80px;">
+                </div>
+            `;
+        });
+
+        const pointsDisplay = Object.entries(round.ffa_placement_points || {})
+            .sort((a,b) => parseInt(a[0]) - parseInt(b[0]))
+            .map(([k,v]) => `#${k}: ${v}pts`)
+            .join(' &bull; ');
+
+        const isCompleted = round.status === 'completed';
+
+        section.innerHTML = `
+            <div class="manage-section">
+                <div class="manage-section-title">Managing: ${escapeHtml(round.name)}</div>
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-bottom:var(--space-md);">
+                    ${getTypeBadge(round.type)}
+                    ${getStatusBadge(round.status)}
+                </div>
+                ${pointsDisplay ? `<p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">Point schedule: ${pointsDisplay}</p>` : ''}
+
+                <h3 style="font-family:var(--font-display);font-size:0.75rem;text-transform:uppercase;letter-spacing:2px;color:var(--text-secondary);margin-bottom:var(--space-md);">Assign Placements</h3>
+                <div id="ffa-placement-form">
+                    ${rowsHtml || '<div class="empty-state">No players in this round.</div>'}
+                </div>
+                ${!isCompleted && players.length > 0 ? `<button class="btn btn-success" style="margin-top:var(--space-lg);" onclick="saveFfaPlacements()">Save Placements &amp; Complete Round</button>` : ''}
+                ${isCompleted ? '<div style="margin-top:var(--space-md);color:var(--neon-green);font-family:var(--font-mono);font-size:0.85rem;">Round completed.</div>' : ''}
+            </div>
+        `;
+    }
+
+    async function saveFfaPlacements() {
+        const round = managedRound;
+        const inputs = document.querySelectorAll('.ffa-placement-input');
+        const results = [];
+        const usedPlacements = new Set();
+
+        for (const input of inputs) {
+            const playerId = input.dataset.playerId;
+            const val = input.value.trim();
+            if (!val) continue;
+            const placement = parseInt(val);
+            if (isNaN(placement) || placement < 1) return showToast('Placements must be positive integers', 'error');
+            if (usedPlacements.has(placement)) return showToast(`Duplicate placement #${placement}`, 'error');
+            usedPlacements.add(placement);
+
+            const pts = (round.ffa_placement_points || {})[String(placement)] || 0;
+            results.push({ player_id: playerId, placement, points_awarded: pts });
+        }
+
+        if (results.length === 0) return showToast('Enter at least one placement', 'error');
+
+        try {
+            // Upsert ffa_results
+            const ffaInserts = results.map(r => ({
+                round_id: round.id,
+                player_id: r.player_id,
+                placement: r.placement,
+                points_awarded: r.points_awarded
+            }));
+
+            // Delete existing first (upsert with conflict)
+            await supabaseClient.from('ffa_results').delete().eq('round_id', round.id);
+            const { error: frErr } = await supabaseClient.from('ffa_results').insert(ffaInserts);
+            if (frErr) throw frErr;
+
+            // Upsert player_points
+            await supabaseClient.from('player_points').delete().eq('round_id', round.id).eq('source', 'ffa_placement');
+            const ppInserts = results.map(r => ({
+                round_id: round.id,
+                player_id: r.player_id,
+                points: r.points_awarded,
+                source: 'ffa_placement'
+            }));
+            const { error: ppErr } = await supabaseClient.from('player_points').insert(ppInserts);
+            if (ppErr) throw ppErr;
+
+            // Mark round completed
+            const { error: rErr } = await supabaseClient
+                .from('rounds')
+                .update({ status: 'completed' })
+                .eq('id', round.id);
+            if (rErr) throw rErr;
+
+            showToast('Placements saved & round completed!');
+            allRounds = await fetchRounds();
+            managedRound = allRounds.find(r => r.id === round.id);
+            renderRoundsList();
+            await renderFfaManage(document.getElementById('manage-round-section'));
+        } catch (err) {
+            showToast(err.message, 'error');
+            console.error(err);
+        }
+    }
+
+    async function renderBracketManage(section) {
+        const round = managedRound;
+
+        // Fetch all needed data
+        [managedMatches, managedRoundPlayers, managedRoundTeams] = await Promise.all([
+            fetchBracketMatches(round.id),
+            round.type === 'solo_bracket' ? fetchRoundPlayers(round.id) : Promise.resolve([]),
+            round.type === 'team_bracket' ? fetchRoundTeams(round.id) : Promise.resolve([])
+        ]);
+
+        const players = managedRoundPlayers.map(rp => rp.player).filter(Boolean);
+        const teams = managedRoundTeams.map(rt => rt.team).filter(Boolean);
+
+        // Check if all matches are complete (to show "Complete Round" button)
+        const maxRound = managedMatches.reduce((max, m) => Math.max(max, m.bracket_round), 0);
+        const finalMatches = managedMatches.filter(m => m.bracket_round === maxRound);
+        const allFinalComplete = finalMatches.length > 0 && finalMatches.every(m => m.status === 'completed' || m.status === 'bye');
+        const isRoundCompleted = round.status === 'completed';
+
+        section.innerHTML = `
+            <div class="manage-section">
+                <div class="manage-section-title">Managing: ${escapeHtml(round.name)}</div>
+                <div style="display:flex;gap:var(--space-sm);flex-wrap:wrap;margin-bottom:var(--space-lg);">
+                    ${getTypeBadge(round.type)}
+                    ${getStatusBadge(round.status)}
+                </div>
+                <p style="font-family:var(--font-mono);font-size:0.75rem;color:var(--text-dim);margin-bottom:var(--space-md);">
+                    ${!isRoundCompleted ? 'Click a highlighted match to record results.' : 'Round completed.'}
+                </p>
+                <div class="bracket-admin-container" id="admin-bracket-render"></div>
+                ${allFinalComplete && !isRoundCompleted ? `<button class="btn btn-success" style="margin-top:var(--space-md);" onclick="completeRound()">Complete Round &amp; Award Placement Bonuses</button>` : ''}
+                ${isRoundCompleted ? '<div style="color:var(--neon-green);font-family:var(--font-mono);font-size:0.85rem;margin-top:var(--space-sm);">Round completed.</div>' : ''}
+            </div>
+        `;
+
+        const bracketContainer = document.getElementById('admin-bracket-render');
+        renderBracket(
+            bracketContainer,
+            managedMatches,
+            players,
+            teams,
+            !isRoundCompleted,
+            (match) => openMatchResultModal(match, players, teams)
+        );
+    }
+
+    function openMatchResultModal(match, players, teams) {
+        function getName(type, id) {
+            if (!id) return 'TBD';
+            if (type === 'player') {
+                const p = players.find(pl => pl.id === id);
+                return p ? p.gamertag : '?';
+            } else {
+                const t = teams.find(tm => tm.id === id);
+                return t ? t.team_label : '?';
+            }
+        }
+
+        const p1Name = getName(match.participant_1_type, match.participant_1_id);
+        const p2Name = getName(match.participant_2_type, match.participant_2_id);
+
+        const modal = document.getElementById('match-modal-content');
+        modal.innerHTML = `
+            <div class="modal-title">Record Match Result</div>
+            <div style="margin-bottom:var(--space-lg);">
+                <div class="form-label">Participants</div>
+                <div style="display:flex;align-items:center;gap:var(--space-md);margin-top:var(--space-sm);">
+                    <span style="font-family:var(--font-mono);font-size:1rem;color:var(--text-primary);flex:1;text-align:center;">${escapeHtml(p1Name)}</span>
+                    <span style="font-family:var(--font-display);font-size:0.7rem;color:var(--neon-yellow);">VS</span>
+                    <span style="font-family:var(--font-mono);font-size:1rem;color:var(--text-primary);flex:1;text-align:center;">${escapeHtml(p2Name)}</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Winner</label>
+                <div class="radio-group">
+                    <label class="radio-item">
+                        <input type="radio" name="match-winner" value="${match.participant_1_id}" id="win-p1">
+                        ${escapeHtml(p1Name)}
+                    </label>
+                    <label class="radio-item">
+                        <input type="radio" name="match-winner" value="${match.participant_2_id}" id="win-p2">
+                        ${escapeHtml(p2Name)}
+                    </label>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:var(--space-md);">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">${escapeHtml(p1Name)} Score</label>
+                    <input type="text" id="score-1" class="form-input" placeholder="Optional">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">${escapeHtml(p2Name)} Score</label>
+                    <input type="text" id="score-2" class="form-input" placeholder="Optional">
+                </div>
+            </div>
+
+            <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-md);">
+                <button class="btn btn-sm" onclick="closeMatchModal()">Cancel</button>
+                <button class="btn btn-success btn-sm" onclick="recordMatchResult('${match.id}')">Record Result</button>
+            </div>
+        `;
+        document.getElementById('match-modal-overlay').classList.add('show');
+    }
+
+    function closeMatchModalOverlay(e) {
+        if (e.target === document.getElementById('match-modal-overlay')) closeMatchModal();
+    }
+    function closeMatchModal() {
+        document.getElementById('match-modal-overlay').classList.remove('show');
+    }
+
+    async function recordMatchResult(matchId) {
+        const winnerRadio = document.querySelector('input[name="match-winner"]:checked');
+        if (!winnerRadio) return showToast('Select a winner', 'error');
+        const winnerId = winnerRadio.value;
+        const score1 = document.getElementById('score-1').value.trim() || null;
+        const score2 = document.getElementById('score-2').value.trim() || null;
+
+        try {
+            const match = managedMatches.find(m => m.id === matchId);
+            if (!match) throw new Error('Match not found');
+
+            const round = managedRound;
+
+            // 1. Update bracket_match
+            const { error: updateErr } = await supabaseClient
+                .from('bracket_matches')
+                .update({ winner_id: winnerId, score_1: score1, score_2: score2, status: 'completed' })
+                .eq('id', matchId);
+            if (updateErr) throw updateErr;
+
+            // 2. Award match_win_points to winner
+            await awardMatchWinPoints(winnerId, match.participant_1_type, round);
+
+            // 3. Advance winner to next match
+            await advanceWinner(match, winnerId, round.type);
+
+            closeMatchModal();
+            showToast('Result recorded!');
+
+            // Re-render
+            await renderBracketManage(document.getElementById('manage-round-section'));
+        } catch (err) {
+            showToast(err.message, 'error');
+            console.error(err);
+        }
+    }
+
+    async function awardMatchWinPoints(winnerId, participantType, round) {
+        // If team bracket: award to all players on the team
+        if (participantType === 'team' || round.type === 'team_bracket') {
+            // Find team players
+            const teamData = managedRoundTeams.find(rt => rt.team && rt.team.id === winnerId);
+            if (teamData && teamData.team && teamData.team.team_players) {
+                const ppInserts = teamData.team.team_players.map(tp => ({
+                    round_id: round.id,
+                    player_id: tp.player_id,
+                    points: round.match_win_points,
+                    source: 'match_win'
+                }));
+                if (ppInserts.length > 0) {
+                    const { error } = await supabaseClient.from('player_points').insert(ppInserts);
+                    if (error) throw error;
+                }
+            }
+        } else {
+            // Solo: award directly to player
+            const { error } = await supabaseClient.from('player_points').insert({
+                round_id: round.id,
+                player_id: winnerId,
+                points: round.match_win_points,
+                source: 'match_win'
+            });
+            if (error) throw error;
+        }
+    }
+
+    async function advanceWinner(match, winnerId, roundType) {
+        const nextRound = match.bracket_round + 1;
+        const nextPos = Math.floor(match.bracket_position / 2);
+        // slot: if position is even, p1; if odd, p2
+        const slot = match.bracket_position % 2 === 0 ? 1 : 2;
+
+        // Find the next match
+        const nextMatch = managedMatches.find(m =>
+            m.bracket_round === nextRound && m.bracket_position === nextPos
+        );
+        if (!nextMatch) return; // Final round, no advancement needed
+
+        const pType = roundType === 'team_bracket' ? 'team' : 'player';
+        const updateData = {};
+        if (slot === 1) {
+            updateData.participant_1_type = pType;
+            updateData.participant_1_id = winnerId;
+        } else {
+            updateData.participant_2_type = pType;
+            updateData.participant_2_id = winnerId;
+        }
+
+        const { error: advErr } = await supabaseClient
+            .from('bracket_matches')
+            .update(updateData)
+            .eq('id', nextMatch.id);
+        if (advErr) throw advErr;
+
+        // Check if next match is now a bye (other participant is null)
+        // Reload the match to check
+        const { data: refreshedNext } = await supabaseClient
+            .from('bracket_matches')
+            .select('*')
+            .eq('id', nextMatch.id)
+            .single();
+
+        if (refreshedNext) {
+            const hasP1 = !!refreshedNext.participant_1_id;
+            const hasP2 = !!refreshedNext.participant_2_id;
+            // If only one participant after both slots could have been filled, don't auto-bye here
+            // But if we're in a later round where the other slot can never be filled... we skip for now
+            // Auto-bye: if this match was already pending and now both are filled, just let admin click
+            // We only auto-complete if exactly one participant is known AND the bracket is such that
+            // the other can never be filled (checked by seeing if the feeder match was also a bye)
+            // For simplicity: check if other slot feeder match is a bye/completed with no opponent
+            const otherSlot = slot === 1 ? 2 : 1;
+            const otherFeederPos = otherSlot === 1 ? nextPos * 2 : nextPos * 2 + 1;
+            const feederMatch = managedMatches.find(m =>
+                m.bracket_round === match.bracket_round && m.bracket_position === otherFeederPos
+            );
+            if (feederMatch && feederMatch.status === 'bye' && !feederMatch.winner_id) {
+                // Other feeder is a null-null bye, auto-complete next match
+                const { error: byeErr } = await supabaseClient
+                    .from('bracket_matches')
+                    .update({ status: 'bye', winner_id: winnerId })
+                    .eq('id', nextMatch.id);
+                if (byeErr) throw byeErr;
+
+                // Award match win for the auto-bye too
+                await awardMatchWinPoints(winnerId, pType, managedRound);
+
+                // Advance again
+                await advanceWinner({ ...nextMatch, bracket_round: nextRound, bracket_position: nextPos }, winnerId, managedRound.type);
+            }
+        }
+    }
+
+    async function completeRound() {
+        const round = managedRound;
+        if (!confirm(`Complete round "${round.name}" and award placement bonuses?`)) return;
+
+        try {
+            // Determine final bracket round
+            const maxRound = managedMatches.reduce((max, m) => Math.max(max, m.bracket_round), 0);
+            const finalMatches = managedMatches.filter(m => m.bracket_round === maxRound);
+            const finalMatch = finalMatches[0];
+
+            if (!finalMatch || !finalMatch.winner_id) {
+                return showToast('Final match not completed yet', 'error');
+            }
+
+            const winnerId = finalMatch.winner_id; // 1st place
+            const loserId = winnerId === finalMatch.participant_1_id
+                ? finalMatch.participant_2_id
+                : finalMatch.participant_1_id; // 2nd place
+
+            // 3rd place: losers of semi-finals
+            const semiMatches = managedMatches.filter(m => m.bracket_round === maxRound - 1);
+            const thirdPlaceIds = [];
+            semiMatches.forEach(m => {
+                if (m.status === 'completed' && m.winner_id) {
+                    const loser = m.winner_id === m.participant_1_id ? m.participant_2_id : m.participant_1_id;
+                    if (loser) thirdPlaceIds.push(loser);
+                }
+            });
+
+            const pType = round.type === 'team_bracket' ? 'team' : 'player';
+
+            async function awardPlacementBonus(participantId, points, label) {
+                if (!participantId || points <= 0) return;
+                if (pType === 'team') {
+                    const teamData = managedRoundTeams.find(rt => rt.team && rt.team.id === participantId);
+                    if (teamData && teamData.team && teamData.team.team_players) {
+                        const ppInserts = teamData.team.team_players.map(tp => ({
+                            round_id: round.id,
+                            player_id: tp.player_id,
+                            points: points,
+                            source: 'placement_bonus'
+                        }));
+                        if (ppInserts.length > 0) {
+                            const { error } = await supabaseClient.from('player_points').insert(ppInserts);
+                            if (error) throw error;
+                        }
+                    }
+                } else {
+                    const { error } = await supabaseClient.from('player_points').insert({
+                        round_id: round.id,
+                        player_id: participantId,
+                        points: points,
+                        source: 'placement_bonus'
+                    });
+                    if (error) throw error;
+                }
+            }
+
+            await awardPlacementBonus(winnerId, round.placement_1st_points, '1st');
+            await awardPlacementBonus(loserId, round.placement_2nd_points, '2nd');
+            for (const tpId of thirdPlaceIds) {
+                await awardPlacementBonus(tpId, round.placement_3rd_points, '3rd');
+            }
+
+            // Mark round completed
+            const { error: rErr } = await supabaseClient
+                .from('rounds')
+                .update({ status: 'completed' })
+                .eq('id', round.id);
+            if (rErr) throw rErr;
+
+            showToast('Round completed! Placement bonuses awarded.');
+            allRounds = await fetchRounds();
+            managedRound = allRounds.find(r => r.id === round.id);
+            renderRoundsList();
+            await renderBracketManage(document.getElementById('manage-round-section'));
+        } catch (err) {
+            showToast(err.message, 'error');
+            console.error(err);
         }
     }
 

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS ARENA // Rounds</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .round-card {
+            display: block;
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
+            text-decoration: none;
+            color: inherit;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+        .round-card:hover {
+            border-color: var(--neon-cyan);
+            box-shadow: var(--glow-cyan);
+        }
+        .round-card-name {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-cyan);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: var(--space-xs);
+        }
+        .round-card-game {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+        }
+        .round-card-meta {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .badge {
+            font-family: var(--font-display);
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid;
+            white-space: nowrap;
+        }
+        .badge-ffa {
+            color: var(--neon-yellow);
+            border-color: var(--neon-yellow);
+            background: rgba(255, 225, 0, 0.06);
+        }
+        .badge-solo {
+            color: var(--neon-purple);
+            border-color: var(--neon-purple);
+            background: rgba(176, 38, 255, 0.06);
+        }
+        .badge-team {
+            color: var(--neon-magenta);
+            border-color: var(--neon-magenta);
+            background: rgba(255, 45, 149, 0.06);
+        }
+        .badge-active {
+            color: var(--neon-green);
+            border-color: var(--neon-green);
+            background: rgba(57, 255, 20, 0.06);
+            animation: pulse-active 2s ease-in-out infinite;
+        }
+        .badge-completed {
+            color: var(--text-dim);
+            border-color: var(--border-dim);
+            background: transparent;
+        }
+        .round-count {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+        @keyframes pulse-active {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .rounds-grid {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 class="site-title">Nexus Arena</h1>
+            <p class="site-subtitle">// Game Competition Leaderboard //</p>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-link">Standings</a>
+                <a href="rounds.html" class="nav-link">Rounds</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </header>
+
+        <main>
+            <h2 class="section-header">Competition <span class="accent">Rounds</span></h2>
+            <div id="rounds-container" class="rounds-grid loading">Loading rounds</div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script>
+        function getTypeBadge(type) {
+            if (type === 'ffa') return '<span class="badge badge-ffa">FFA</span>';
+            if (type === 'solo_bracket') return '<span class="badge badge-solo">Solo Bracket</span>';
+            if (type === 'team_bracket') return '<span class="badge badge-team">Team Bracket</span>';
+            return `<span class="badge">${escapeHtml(type)}</span>`;
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'active') return '<span class="badge badge-active">Active</span>';
+            return '<span class="badge badge-completed">Completed</span>';
+        }
+
+        async function loadRounds() {
+            const container = document.getElementById('rounds-container');
+            try {
+                const rounds = await fetchRounds();
+                container.classList.remove('loading');
+
+                if (!rounds || rounds.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No rounds scheduled yet. Check back soon!</div>';
+                    return;
+                }
+
+                // Fetch participant counts for all rounds
+                const countPromises = rounds.map(async (round) => {
+                    if (round.type === 'team_bracket') {
+                        const { count } = await supabaseClient
+                            .from('round_teams')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('round_id', round.id);
+                        return { id: round.id, count: count || 0, label: 'teams' };
+                    } else {
+                        const { count } = await supabaseClient
+                            .from('round_players')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('round_id', round.id);
+                        return { id: round.id, count: count || 0, label: 'players' };
+                    }
+                });
+
+                const counts = await Promise.all(countPromises);
+                const countMap = {};
+                counts.forEach(c => { countMap[c.id] = c; });
+
+                let html = '';
+                rounds.forEach(round => {
+                    const countInfo = countMap[round.id];
+                    const countStr = countInfo ? `${countInfo.count} ${countInfo.label}` : '';
+                    html += `
+                        <a href="round.html?id=${encodeURIComponent(round.id)}" class="round-card">
+                            <div class="round-card-name">${escapeHtml(round.name)}</div>
+                            <div class="round-card-game">${escapeHtml(round.game_name)}</div>
+                            <div class="round-card-meta">
+                                ${getTypeBadge(round.type)}
+                                ${getStatusBadge(round.status)}
+                                ${countStr ? `<span class="round-count">${escapeHtml(countStr)}</span>` : ''}
+                            </div>
+                        </a>
+                    `;
+                });
+
+                container.innerHTML = html;
+            } catch (err) {
+                container.classList.remove('loading');
+                container.innerHTML = '<div class="empty-state">Error loading rounds. Please refresh.</div>';
+                console.error(err);
+            }
+        }
+
+        loadRounds();
+    </script>
+</body>
+</html>

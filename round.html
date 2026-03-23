@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS ARENA // Round</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .round-hero {
+            margin-bottom: var(--space-xl);
+        }
+        .round-hero-name {
+            font-family: var(--font-display);
+            font-size: clamp(1.2rem, 4vw, 2rem);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-cyan);
+        }
+        .round-hero-game {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+        .stat-chips {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+            margin-top: var(--space-md);
+        }
+        .stat-chip {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 4px 12px;
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            background: var(--bg-panel);
+        }
+        .stat-chip span {
+            color: var(--text-primary);
+            margin-left: 4px;
+        }
+        .badge {
+            font-family: var(--font-display);
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid;
+            white-space: nowrap;
+            display: inline-block;
+        }
+        .badge-ffa { color: var(--neon-yellow); border-color: var(--neon-yellow); background: rgba(255,225,0,0.06); }
+        .badge-solo { color: var(--neon-purple); border-color: var(--neon-purple); background: rgba(176,38,255,0.06); }
+        .badge-team { color: var(--neon-magenta); border-color: var(--neon-magenta); background: rgba(255,45,149,0.06); }
+        .badge-active { color: var(--neon-green); border-color: var(--neon-green); background: rgba(57,255,20,0.06); animation: pulse-active 2s ease-in-out infinite; }
+        .badge-completed { color: var(--text-dim); border-color: var(--border-dim); background: transparent; }
+        @keyframes pulse-active { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+        .bracket-section {
+            margin-bottom: var(--space-xl);
+        }
+        .bracket-container {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .completed-matches {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+        .bracket-match-summary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-dim);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: var(--space-sm);
+        }
+        .bracket-match-summary .match-label {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+        .match-participants {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+        .match-p {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .match-p.winner {
+            color: var(--neon-green);
+            text-shadow: 0 0 8px rgba(57,255,20,0.3);
+            font-weight: 700;
+        }
+        .match-vs {
+            font-family: var(--font-display);
+            font-size: 0.6rem;
+            color: var(--neon-yellow);
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="site-header">
+            <h1 class="site-title">Nexus Arena</h1>
+            <p class="site-subtitle">// Game Competition Leaderboard //</p>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-link">Standings</a>
+                <a href="rounds.html" class="nav-link">Rounds</a>
+                <a href="admin.html" class="nav-link">Admin</a>
+            </nav>
+        </header>
+
+        <main>
+            <div id="round-hero" class="round-hero loading">Loading round</div>
+            <div id="round-content"></div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const roundId = params.get('id');
+
+        function getTypeBadge(type) {
+            if (type === 'ffa') return '<span class="badge badge-ffa">FFA</span>';
+            if (type === 'solo_bracket') return '<span class="badge badge-solo">Solo Bracket</span>';
+            if (type === 'team_bracket') return '<span class="badge badge-team">Team Bracket</span>';
+            return `<span class="badge">${escapeHtml(type)}</span>`;
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'active') return '<span class="badge badge-active">Active</span>';
+            return '<span class="badge badge-completed">Completed</span>';
+        }
+
+        function renderRoundHero(round) {
+            const hero = document.getElementById('round-hero');
+            hero.classList.remove('loading');
+
+            let pointInfo = '';
+            if (round.type === 'ffa') {
+                const pts = round.ffa_placement_points || {};
+                const ptsList = Object.entries(pts).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(' &bull; ');
+                pointInfo = ptsList ? `<div class="stat-chip">Placement Points<span>${ptsList}</span></div>` : '';
+            } else {
+                pointInfo = `
+                    <div class="stat-chip">Match Win<span>${round.match_win_points}pts</span></div>
+                    <div class="stat-chip">1st Place<span>+${round.placement_1st_points}pts</span></div>
+                    <div class="stat-chip">2nd Place<span>+${round.placement_2nd_points}pts</span></div>
+                    <div class="stat-chip">3rd Place<span>+${round.placement_3rd_points}pts</span></div>
+                `;
+            }
+
+            hero.innerHTML = `
+                <div class="round-hero-name">${escapeHtml(round.name)}</div>
+                <div class="round-hero-game">${escapeHtml(round.game_name)}</div>
+                <div class="stat-chips">
+                    ${getTypeBadge(round.type)}
+                    ${getStatusBadge(round.status)}
+                    ${pointInfo}
+                </div>
+            `;
+        }
+
+        async function renderFfaRound(round) {
+            const content = document.getElementById('round-content');
+            content.innerHTML = '<h2 class="section-header">Placement <span class="accent">Results</span></h2><div id="ffa-results-container" class="panel loading">Loading results</div>';
+
+            const resultsContainer = document.getElementById('ffa-results-container');
+            try {
+                const results = await fetchFfaResults(round.id);
+                resultsContainer.classList.remove('loading');
+
+                if (!results || results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="empty-state">Results will appear here once the admin records placements.</div>';
+                    return;
+                }
+
+                let html = `
+                    <table class="leaderboard">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th style="text-align:right;">Points Awarded</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                results.forEach((r, i) => {
+                    const p = r.player;
+                    html += `
+                        <tr>
+                            <td>${renderRank(r.placement - 1)}</td>
+                            <td>${p ? renderGamertag(p.gamertag, p.real_name) : '<span class="text-dim">Unknown</span>'}</td>
+                            <td style="text-align:right;">${renderPoints(r.points_awarded)}</td>
+                        </tr>
+                    `;
+                });
+                html += '</tbody></table>';
+                resultsContainer.innerHTML = html;
+            } catch (err) {
+                resultsContainer.classList.remove('loading');
+                resultsContainer.innerHTML = '<div class="empty-state">Error loading results.</div>';
+                console.error(err);
+            }
+        }
+
+        async function renderBracketRound(round) {
+            const content = document.getElementById('round-content');
+            content.innerHTML = `
+                <h2 class="section-header">Bracket</h2>
+                <div class="bracket-section">
+                    <div class="bracket-container" id="bracket-render-area"></div>
+                </div>
+                <h2 class="section-header">Completed <span class="accent">Matches</span></h2>
+                <div id="completed-matches-container" class="loading">Loading matches</div>
+            `;
+
+            const bracketArea = document.getElementById('bracket-render-area');
+            const completedContainer = document.getElementById('completed-matches-container');
+
+            try {
+                const [matches, roundPlayers, roundTeams] = await Promise.all([
+                    fetchBracketMatches(round.id),
+                    round.type === 'solo_bracket' ? fetchRoundPlayers(round.id) : Promise.resolve([]),
+                    round.type === 'team_bracket' ? fetchRoundTeams(round.id) : Promise.resolve([])
+                ]);
+
+                // Build players/teams arrays for name lookup
+                const players = roundPlayers.map(rp => rp.player).filter(Boolean);
+                const teams = roundTeams.map(rt => rt.team).filter(Boolean);
+
+                // Render bracket
+                renderBracket(bracketArea, matches, players, teams, false, null);
+
+                // Render completed matches list
+                completedContainer.classList.remove('loading');
+                const completed = matches.filter(m => m.status === 'completed' && (m.participant_1_id || m.participant_2_id));
+
+                if (completed.length === 0) {
+                    completedContainer.innerHTML = '<div class="empty-state">No completed matches yet.</div>';
+                } else {
+                    function getNameById(type, id) {
+                        if (!id) return 'TBD';
+                        if (type === 'player') {
+                            const p = players.find(pl => pl.id === id);
+                            return p ? p.gamertag : '?';
+                        } else {
+                            const t = teams.find(tm => tm.id === id);
+                            return t ? t.team_label : '?';
+                        }
+                    }
+
+                    let html = '<div class="completed-matches">';
+                    completed.forEach(m => {
+                        const p1Name = getNameById(m.participant_1_type, m.participant_1_id);
+                        const p2Name = getNameById(m.participant_2_type, m.participant_2_id);
+                        const p1Win = m.winner_id === m.participant_1_id;
+                        const p2Win = m.winner_id === m.participant_2_id;
+                        const roundLabel = m.bracket_round;
+                        html += `
+                            <div class="bracket-match-summary">
+                                <div>
+                                    <div class="match-label">Round ${escapeHtml(String(roundLabel))} &bull; Match ${escapeHtml(String(m.bracket_position + 1))}</div>
+                                    <div class="match-participants">
+                                        <span class="match-p ${p1Win ? 'winner' : ''}">${escapeHtml(p1Name)}${p1Win ? ' ★' : ''}</span>
+                                        <span class="match-vs">VS</span>
+                                        <span class="match-p ${p2Win ? 'winner' : ''}">${escapeHtml(p2Name)}${p2Win ? ' ★' : ''}</span>
+                                    </div>
+                                </div>
+                                ${(m.score_1 || m.score_2) ? `<div style="font-family:var(--font-mono);font-size:0.85rem;color:var(--neon-yellow);">${escapeHtml(m.score_1 || '-')} &ndash; ${escapeHtml(m.score_2 || '-')}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    completedContainer.innerHTML = html;
+                }
+            } catch (err) {
+                bracketArea.innerHTML = '<div class="empty-state">Error loading bracket.</div>';
+                completedContainer.classList.remove('loading');
+                completedContainer.innerHTML = '<div class="empty-state">Error loading matches.</div>';
+                console.error(err);
+            }
+        }
+
+        async function init() {
+            if (!roundId) {
+                document.getElementById('round-hero').classList.remove('loading');
+                document.getElementById('round-hero').innerHTML = '<div class="empty-state">No round ID specified. <a href="rounds.html">View all rounds</a>.</div>';
+                return;
+            }
+
+            try {
+                const round = await fetchRound(roundId);
+                document.title = `NEXUS ARENA // ${round.name}`;
+                renderRoundHero(round);
+
+                if (round.type === 'ffa') {
+                    await renderFfaRound(round);
+                } else {
+                    await renderBracketRound(round);
+                }
+            } catch (err) {
+                const hero = document.getElementById('round-hero');
+                hero.classList.remove('loading');
+                hero.innerHTML = '<div class="empty-state">Round not found. <a href="rounds.html">View all rounds</a>.</div>';
+                console.error(err);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
