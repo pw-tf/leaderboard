@@ -408,6 +408,7 @@
     let managedMatches = [];
     let managedRoundPlayers = [];
     let managedRoundTeams = [];
+    let currentMatchCtx = null; // { matchId, p1Id, p2Id, p1PlayerIds, p2PlayerIds, maxBracketRound }
 
     // ============================================
     // AUTH
@@ -1028,6 +1029,10 @@
         const toTeamIdx = parseInt(document.getElementById('move-to-team').value);
         const player = generatedTeams[fromTeamIdx].players.splice(playerIdx, 1)[0];
         generatedTeams[toTeamIdx].players.push(player);
+
+        // Remove any teams that are now empty
+        generatedTeams = generatedTeams.filter(t => t.players.length > 0);
+
         closeMoveModal();
         renderTeamsPreview();
     }
@@ -1633,6 +1638,16 @@
             `;
         }
 
+        // Store context so recordMatchResult can read it without inline JSON params
+        currentMatchCtx = {
+            matchId: match.id,
+            p1Id: match.participant_1_id,
+            p2Id: match.participant_2_id,
+            p1PlayerIds: p1Players.map(p => p.id),
+            p2PlayerIds: p2Players.map(p => p.id),
+            maxBracketRound
+        };
+
         const modal = document.getElementById('match-modal-content');
         modal.innerHTML = `
             <div class="modal-title">Record Match Result</div>
@@ -1646,7 +1661,6 @@
 
             ${statsHtml}
 
-            ${mode !== 'halo' && mode !== 'peak' ? `
             <div class="form-group">
                 <label class="form-label">Winner</label>
                 <div class="radio-group">
@@ -1657,11 +1671,11 @@
                         <input type="radio" name="match-winner" value="${match.participant_2_id}" id="win-p2"> ${escapeHtml(p2Name)}
                     </label>
                 </div>
-            </div>` : ''}
+            </div>
 
             <div style="display:flex;gap:var(--space-sm);justify-content:flex-end;margin-top:var(--space-md);">
                 <button class="btn btn-sm" onclick="closeMatchModal()">Cancel</button>
-                <button class="btn btn-success btn-sm" onclick="recordMatchResult('${match.id}', '${match.participant_1_id}', '${match.participant_2_id}', ${JSON.stringify(p1Players.map(p=>p.id))}, ${JSON.stringify(p2Players.map(p=>p.id))}, ${maxBracketRound})">Record Result</button>
+                <button class="btn btn-success btn-sm" onclick="recordMatchResult()">Record Result</button>
             </div>
         `;
         document.getElementById('match-modal-overlay').classList.add('show');
@@ -1686,7 +1700,9 @@
         document.querySelectorAll('.kda-full-inputs').forEach(el => el.style.display = simple ? 'none' : 'flex');
     }
 
-    async function recordMatchResult(matchId, p1Id, p2Id, p1PlayerIds, p2PlayerIds, maxBracketRound) {
+    async function recordMatchResult() {
+        if (!currentMatchCtx) return showToast('No match selected', 'error');
+        const { matchId, p1Id, p2Id, p1PlayerIds, p2PlayerIds, maxBracketRound } = currentMatchCtx;
         const match = managedMatches.find(m => m.id === matchId);
         if (!match) return showToast('Match not found', 'error');
         const round = managedRound;
@@ -1694,43 +1710,42 @@
         const useWinMult = round.use_win_multiplier;
         const mult = useWinMult ? getWinMultiplier(match.bracket_round, maxBracketRound) : 1.0;
 
-        let winnerId = null;
+        // Winner always comes from the radio button
+        const winnerRadio = document.querySelector('input[name="match-winner"]:checked');
+        if (!winnerRadio) return showToast('Select a winner', 'error');
+        const winnerId = winnerRadio.value;
+
         let score1 = null, score2 = null;
-        let statsToInsert = []; // match_player_stats rows
+        let statsToInsert = [];
 
         try {
             if (mode === 'halo') {
                 const isSimpleKda = document.getElementById('match-simple-kda').checked;
-                // Collect stats for each player on each side, sum CFS per side to determine winner
+
                 function collectHaloStats(playerIds, prefix) {
                     return playerIds.map(pid => {
-                        const sfx = pid;
-                        const scoreEl = document.getElementById(`${prefix}-score-${sfx}`);
+                        const scoreEl = document.getElementById(`${prefix}-score-${pid}`);
                         const s = parseFloat(scoreEl?.value) || 0;
                         let kda, kills = null, deaths = null, assists = null, cfs, points;
                         if (isSimpleKda) {
-                            kda = parseFloat(document.getElementById(`${prefix}-kda-${sfx}`)?.value) || 0;
+                            kda = parseFloat(document.getElementById(`${prefix}-kda-${pid}`)?.value) || 0;
                             cfs = s * kda * mult;
                             points = cfs / 100;
                         } else {
-                            kills = parseInt(document.getElementById(`${prefix}-kills-${sfx}`)?.value) || 0;
-                            deaths = parseInt(document.getElementById(`${prefix}-deaths-${sfx}`)?.value) || 0;
-                            assists = parseInt(document.getElementById(`${prefix}-assists-${sfx}`)?.value) || 0;
+                            kills = parseInt(document.getElementById(`${prefix}-kills-${pid}`)?.value) || 0;
+                            deaths = parseInt(document.getElementById(`${prefix}-deaths-${pid}`)?.value) || 0;
+                            assists = parseInt(document.getElementById(`${prefix}-assists-${pid}`)?.value) || 0;
                             ({ kda, cfs, points } = calculateHaloPoints(s, kills, deaths, assists, mult));
                         }
                         return { player_id: pid, match_id: matchId, score: s, kills, deaths, assists, kda, cfs, points_awarded: points };
                     });
                 }
 
-                // For solo: player IS the participant
                 const p1Stats = p1PlayerIds.length > 0 ? collectHaloStats(p1PlayerIds, 'p1') : [];
                 const p2Stats = p2PlayerIds.length > 0 ? collectHaloStats(p2PlayerIds, 'p2') : [];
 
                 const p1Cfs = p1Stats.reduce((s, r) => s + r.cfs, 0);
                 const p2Cfs = p2Stats.reduce((s, r) => s + r.cfs, 0);
-                if (p1Stats.length === 0 && p2Stats.length === 0) return showToast('Enter stats for at least one side', 'error');
-
-                winnerId = p1Cfs >= p2Cfs ? p1Id : p2Id;
                 score1 = p1Cfs.toFixed(2);
                 score2 = p2Cfs.toFixed(2);
                 statsToInsert = [...p1Stats, ...p2Stats];
@@ -1775,13 +1790,9 @@
                 // We'll store stats separately after match update
 
             } else {
-                // Simple Score: manual winner radio
-                const winnerRadio = document.querySelector('input[name="match-winner"]:checked');
-                if (!winnerRadio) return showToast('Select a winner', 'error');
-                winnerId = winnerRadio.value;
-                score1 = (document.getElementById('score-1') || {}).value?.trim() || null;
-                score2 = (document.getElementById('score-2') || {}).value?.trim() || null;
-                // Simple Score points awarded at completeRound(), not per match
+                // Simple Score: optional display scores, points awarded at completeRound()
+                score1 = document.getElementById('score-1')?.value?.trim() || null;
+                score2 = document.getElementById('score-2')?.value?.trim() || null;
             }
 
             // 1. Update bracket_match
