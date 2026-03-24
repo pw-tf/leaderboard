@@ -1640,6 +1640,16 @@
                     </div>
                 </div>
                 <p style="font-family:var(--font-mono);font-size:0.7rem;color:var(--text-dim);margin-top:var(--space-sm);">Winner = higher total CFS. Points = CFS ÷ 100${round.use_win_multiplier ? ' × round multiplier' : ''}.</p>
+                <div style="display:flex;gap:var(--space-md);margin-top:var(--space-md);">
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label">${escapeHtml(p1Name)} Display Score <span style="color:var(--text-dim);font-weight:normal;">(optional)</span></label>
+                        <input type="text" id="score-1" class="form-input" placeholder="e.g. 3 caps">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label">${escapeHtml(p2Name)} Display Score <span style="color:var(--text-dim);font-weight:normal;">(optional)</span></label>
+                        <input type="text" id="score-2" class="form-input" placeholder="e.g. 1 cap">
+                    </div>
+                </div>
             `;
         } else {
             // Simple Score: just winner radio + optional display scores
@@ -1763,10 +1773,8 @@
                 const p1Stats = p1PlayerIds.length > 0 ? collectHaloStats(p1PlayerIds, 'p1') : [];
                 const p2Stats = p2PlayerIds.length > 0 ? collectHaloStats(p2PlayerIds, 'p2') : [];
 
-                const p1Cfs = p1Stats.reduce((s, r) => s + r.cfs, 0);
-                const p2Cfs = p2Stats.reduce((s, r) => s + r.cfs, 0);
-                score1 = p1Cfs.toFixed(2);
-                score2 = p2Cfs.toFixed(2);
+                score1 = document.getElementById('score-1')?.value?.trim() || null;
+                score2 = document.getElementById('score-2')?.value?.trim() || null;
                 statsToInsert = [...p1Stats, ...p2Stats];
 
             } else {
