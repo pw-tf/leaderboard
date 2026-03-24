@@ -64,7 +64,7 @@
                     html += `
                         <tr>
                             <td>${renderRank(i)}</td>
-                            <td><span class="gamertag breakdown-link" onclick="openBreakdown('${escapeHtml(p.id)}','${escapeHtml(p.gamertag)}')" style="cursor:pointer;text-decoration:underline dotted;">${escapeHtml(p.gamertag)}<span class="real-name">${escapeHtml(p.real_name || '')}</span></span></td>
+                            <td><span class="gamertag breakdown-link" onclick="openBreakdown('${escapeHtml(p.id)}',${JSON.stringify(p.gamertag)})" style="cursor:pointer;text-decoration:underline dotted;">${escapeHtml(p.gamertag)}<span class="real-name">${escapeHtml(p.real_name || '')}</span></span></td>
                             <td style="text-align:right;">${renderPoints(p.total_points)}</td>
                         </tr>
                     `;
@@ -104,7 +104,16 @@
                 });
 
                 const modeLabel = { halo: 'Halo', peak: 'Peak', simple_score: 'Simple Score' };
-                const sourceLabel = { ffa_placement: 'Placement', match_win: 'Match Win', placement_bonus: 'Placement Bonus' };
+                const sourceLabel = {
+                    ffa_placement: 'Placement',
+                    placement_bonus: 'Placement Bonus',
+                    match_halo: 'Halo',
+                    peak_result: 'Peak'
+                };
+                function formatSource(source) {
+                    return sourceLabel[source] ||
+                        source.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                }
 
                 let html = '';
                 Object.values(byRound).forEach(round => {
@@ -116,7 +125,7 @@
                     round.rows.forEach(r => {
                         html += `
                             <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-dim);font-family:var(--font-mono);font-size:0.8rem;">
-                                <span style="color:var(--text-secondary);">${sourceLabel[r.source] || escapeHtml(r.source)}</span>
+                                <span style="color:var(--text-secondary);">${escapeHtml(formatSource(r.source))}</span>
                                 <span style="color:var(--neon-yellow);">+${parseFloat(r.points).toFixed(2)}</span>
                             </div>
                         `;

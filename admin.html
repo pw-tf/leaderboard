@@ -527,6 +527,8 @@
         if (type === 'ffa') return '<span class="badge badge-ffa">FFA</span>';
         if (type === 'solo_bracket') return '<span class="badge badge-solo">Solo Bracket</span>';
         if (type === 'team_bracket') return '<span class="badge badge-team">Team Bracket</span>';
+        if (type === 'solo_ladder') return '<span class="badge badge-solo">Solo Ladder</span>';
+        if (type === 'team_ladder') return '<span class="badge badge-team">Team Ladder</span>';
         return `<span class="badge">${escapeHtml(type)}</span>`;
     }
 
@@ -2256,7 +2258,8 @@
                     if (ppErr) throw ppErr;
                 }
 
-                await supabaseClient.from('rounds').update({ status: 'completed' }).eq('id', round.id);
+                const { error: rErr } = await supabaseClient.from('rounds').update({ status: 'completed' }).eq('id', round.id);
+                if (rErr) throw rErr;
                 showToast('Round completed! Points awarded.');
                 allRounds = await fetchRounds();
                 managedRound = allRounds.find(r => r.id === round.id);

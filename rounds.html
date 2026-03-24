@@ -126,12 +126,6 @@
             return `<span class="badge">${escapeHtml(type)}</span>`;
         }
 
-        function getFormatBadge(type) {
-            if (type === 'solo_ladder' || type === 'team_ladder') {
-                return '<span style="font-family:var(--font-mono);font-size:0.7rem;color:var(--neon-purple);border:1px solid var(--neon-purple);border-radius:var(--radius-sm);padding:2px 8px;">Ladder</span>';
-            }
-            return '';
-        }
 
         function getStatusBadge(status) {
             if (status === 'active') return '<span class="badge badge-active">Active</span>';
@@ -186,7 +180,6 @@
                             <div class="round-card-game">${escapeHtml(round.game_name)}</div>
                             <div class="round-card-meta">
                                 ${getTypeBadge(round.type)}
-                                ${getFormatBadge(round.type)}
                                 ${getStatusBadge(round.status)}
                                 ${getScoringBadge(round.scoring_mode)}
                                 ${countStr ? `<span class="round-count">${escapeHtml(countStr)}</span>` : ''}

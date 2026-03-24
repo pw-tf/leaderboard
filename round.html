@@ -165,8 +165,8 @@
             const ladderPts = Object.entries(ladder).sort((a,b) => parseInt(a[0]) - parseInt(b[0])).map(([k,v]) => `#${k}: ${v}pts`).join(' &bull; ');
 
             let pointInfo = `<div class="stat-chip">Scoring<span>${escapeHtml(modeLabel)}</span></div>`;
-            if (round.scoring_mode === 'peak' && round.time_allowed_minutes) {
-                pointInfo += `<div class="stat-chip">Time Allowed<span>${round.time_allowed_minutes}min</span></div>`;
+            if (round.scoring_mode === 'peak' && round.time_allowed_seconds) {
+                pointInfo += `<div class="stat-chip">Time Allowed<span>${round.time_allowed_seconds}s</span></div>`;
             }
             if (ladderPts) {
                 pointInfo += `<div class="stat-chip">Placement Pts<span>${ladderPts}</span></div>`;
@@ -201,10 +201,15 @@
                 }
 
                 const isHalo = round.scoring_mode === 'halo';
+                const hasKda = isHalo && results.some(r => r.kills != null);
                 let html = `<table class="leaderboard"><thead><tr>
                     <th>Rank</th><th>Player</th>`;
                 if (isHalo) {
-                    html += `<th style="text-align:right;">Score</th><th style="text-align:right;">K/D/A</th><th style="text-align:right;">KDA</th><th style="text-align:right;">CFS</th>`;
+                    html += `<th style="text-align:right;">Score</th>`;
+                    html += hasKda
+                        ? `<th style="text-align:right;">K/D/A</th>`
+                        : `<th style="text-align:right;">KDA</th>`;
+                    html += `<th style="text-align:right;">CFS</th>`;
                 }
                 html += `<th style="text-align:right;">Points</th></tr></thead><tbody>`;
 
@@ -215,9 +220,11 @@
                         <td>${p ? renderGamertag(p.gamertag, p.real_name) : '<span class="text-dim">Unknown</span>'}</td>`;
                     if (isHalo) {
                         html += `
-                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.score != null ? r.score : '—'}</td>
-                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.kills != null ? `${r.kills}/${r.deaths}/${r.assists}` : '—'}</td>
-                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.kda != null ? parseFloat(r.kda).toFixed(2) : '—'}</td>
+                        <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.score != null ? r.score : '—'}</td>`;
+                        html += hasKda
+                            ? `<td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.kills != null ? `${r.kills}/${r.deaths}/${r.assists}` : '—'}</td>`
+                            : `<td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.kda != null ? parseFloat(r.kda).toFixed(2) : '—'}</td>`;
+                        html += `
                         <td style="text-align:right;font-family:var(--font-mono);font-size:0.85rem;">${r.cfs != null ? parseFloat(r.cfs).toFixed(2) : '—'}</td>`;
                     }
                     html += `<td style="text-align:right;">${renderPoints(r.points_awarded)}</td></tr>`;
@@ -321,9 +328,13 @@
                         let statsHtml = '';
                         if (matchStats.length > 0) {
                             statsHtml = `<div style="margin-top:var(--space-sm);font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim);">`;
+                            const matchHasKda = matchStats.some(s => s.kills != null);
                             matchStats.forEach(s => {
                                 const pName = s.player ? s.player.gamertag : '?';
-                                statsHtml += `<div style="padding:2px 0;">${escapeHtml(pName)}: Score ${s.score ?? '—'} K/D/A ${s.kills ?? '—'}/${s.deaths ?? '—'}/${s.assists ?? '—'} KDA ${s.kda != null ? parseFloat(s.kda).toFixed(2) : '—'} CFS ${s.cfs != null ? parseFloat(s.cfs).toFixed(2) : '—'} (+${s.points_awarded != null ? parseFloat(s.points_awarded).toFixed(2) : '—'}pts)</div>`;
+                                const kdaStr = matchHasKda
+                                    ? `K/D/A ${s.kills ?? '—'}/${s.deaths ?? '—'}/${s.assists ?? '—'}`
+                                    : `KDA ${s.kda != null ? parseFloat(s.kda).toFixed(2) : '—'}`;
+                                statsHtml += `<div style="padding:2px 0;">${escapeHtml(pName)}: Score ${s.score ?? '—'} ${kdaStr} CFS ${s.cfs != null ? parseFloat(s.cfs).toFixed(2) : '—'} (+${s.points_awarded != null ? parseFloat(s.points_awarded).toFixed(2) : '—'}pts)</div>`;
                             });
                             statsHtml += '</div>';
                         }
