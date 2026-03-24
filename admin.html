@@ -1526,6 +1526,7 @@
                 <div class="bracket-admin-container" id="admin-bracket-render"></div>
                 ${allFinalComplete && !isRoundCompleted ? `<button class="btn btn-success" style="margin-top:var(--space-md);" onclick="completeRound()">Complete Round &amp; Award Placement Bonuses</button>` : ''}
                 ${isRoundCompleted ? '<div style="color:var(--neon-green);font-family:var(--font-mono);font-size:0.85rem;margin-top:var(--space-sm);">Round completed.</div>' : ''}
+                ${round.type === 'team_bracket' ? '<div id="admin-rosters-container" style="margin-top:var(--space-xl);"></div>' : ''}
             </div>
         `;
 
@@ -1538,6 +1539,23 @@
             !isRoundCompleted,
             (match) => openMatchResultModal(match, players, teams)
         );
+
+        if (round.type === 'team_bracket' && teams.length > 0) {
+            const rostersEl = document.getElementById('admin-rosters-container');
+            let rHtml = '<div style="font-family:var(--font-display);font-size:0.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:2px;margin-bottom:var(--space-sm);">Team Rosters</div>';
+            rHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--space-md);">';
+            teams.forEach(team => {
+                const teamPlayers = (team.team_players || []).map(tp => tp.player).filter(Boolean);
+                rHtml += `
+                    <div style="background:var(--bg-card);border:1px solid var(--border-dim);border-radius:var(--radius-sm);padding:var(--space-md);">
+                        <div style="font-family:var(--font-display);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--neon-magenta);margin-bottom:var(--space-sm);">${escapeHtml(team.team_label)}</div>
+                        ${teamPlayers.map(p => `<div style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);padding:3px 0;border-bottom:1px solid var(--border-dim);">${escapeHtml(p.gamertag)}</div>`).join('')}
+                    </div>
+                `;
+            });
+            rHtml += '</div>';
+            rostersEl.innerHTML = rHtml;
+        }
     }
 
     function openMatchResultModal(match, players, teams) {

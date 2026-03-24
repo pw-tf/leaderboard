@@ -236,11 +236,11 @@
             const isTeam = round.type === 'team_bracket';
 
             content.innerHTML = `
-                ${isTeam ? '<h2 class="section-header">Team <span class="accent">Rosters</span></h2><div id="rosters-container" class="loading">Loading rosters</div>' : ''}
                 <h2 class="section-header">Bracket</h2>
                 <div class="bracket-section">
                     <div class="bracket-container" id="bracket-render-area"></div>
                 </div>
+                ${isTeam ? '<h2 class="section-header">Team <span class="accent">Rosters</span></h2><div id="rosters-container" class="loading">Loading rosters</div>' : ''}
                 <h2 class="section-header">Completed <span class="accent">Matches</span></h2>
                 <div id="completed-matches-container" class="loading">Loading matches</div>
             `;
