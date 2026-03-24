@@ -392,8 +392,23 @@ function generateBracketMatches(participants, type, roundId) {
 }
 
 /**
- * Generate teams from players using snake draft.
- * players: array with total_points property, sorted desc by caller or here.
+ * Fisher-Yates shuffle in-place.
+ */
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+/**
+ * Generate teams from players using a randomised snake draft.
+ * Players are split into tiers of numTeams, each tier is shuffled before
+ * assignment — this guarantees the top N players are spread across different
+ * teams (the "no stacking" rule) while randomising which team each player
+ * lands on and who they're paired with.
+ * players: array with total_points property.
  * teamSize: desired team size.
  * Returns array of {label, players[]}.
  */
@@ -406,22 +421,25 @@ function generateTeamsFromPlayers(players, teamSize) {
         teams.push({ label: NATO_LABELS[i] || `Team ${i + 1}`, players: [] });
     }
 
-    // Snake draft
+    // Split into tiers of numTeams, shuffle within each tier, then snake draft.
+    // Shuffling within tiers keeps one player from each points-tier on each team
+    // (the anti-stacking rule) while randomising team composition each time.
+    const tiers = [];
+    for (let i = 0; i < sorted.length; i += numTeams) {
+        tiers.push(shuffleArray(sorted.slice(i, i + numTeams)));
+    }
+
     let direction = 1;
     let teamIndex = 0;
-    for (let i = 0; i < sorted.length; i++) {
-        teams[teamIndex].players.push(sorted[i]);
-        if (direction === 1) {
-            if (teamIndex === numTeams - 1) {
-                direction = -1;
+    for (const tier of tiers) {
+        for (const player of tier) {
+            teams[teamIndex].players.push(player);
+            if (direction === 1) {
+                if (teamIndex === numTeams - 1) direction = -1;
+                else teamIndex++;
             } else {
-                teamIndex++;
-            }
-        } else {
-            if (teamIndex === 0) {
-                direction = 1;
-            } else {
-                teamIndex--;
+                if (teamIndex === 0) direction = 1;
+                else teamIndex--;
             }
         }
     }

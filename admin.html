@@ -1197,11 +1197,10 @@
                 if (rpErr) throw rpErr;
 
                 if (type === 'solo_bracket') {
-                    // existing bracket generation code — unchanged
-                    const participants = wizardData.selectedPlayerIds.map(pid => {
+                    const participants = shuffleArray(wizardData.selectedPlayerIds.map(pid => {
                         const ps = playerStandings.find(s => s.id === pid);
                         return { id: pid, total_points: ps ? ps.total_points : 0 };
-                    }).sort((a, b) => b.total_points - a.total_points);
+                    }));
                     const matchInserts = generateBracketMatches(participants, 'solo_bracket', round.id);
                     const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
                     if (matchErr) throw matchErr;
@@ -1250,7 +1249,7 @@
                 if (rtErr) throw rtErr;
 
                 if (type === 'team_bracket') {
-                    const teamParticipants = teamsToUse.map(t => ({ id: t.id, total_points: 0 }));
+                    const teamParticipants = shuffleArray(teamsToUse.map(t => ({ id: t.id, total_points: 0 })));
                     const matchInserts = generateBracketMatches(teamParticipants, 'team_bracket', round.id);
                     const { error: matchErr } = await supabaseClient.from('bracket_matches').insert(matchInserts);
                     if (matchErr) throw matchErr;
